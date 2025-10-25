@@ -1,58 +1,197 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Success</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #6dd5ed, #2193b0);
-            color: white;
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    /* Success page specific styles */
+    .success-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: calc(100vh - 80px);
+        padding: 2rem;
+    }
+
+    .success-card {
+        text-align: center;
+        background: var(--color-surface);
+        border-radius: var(--radius-xl);
+        padding: 3rem 2.5rem;
+        box-shadow: var(--shadow-xl);
+        max-width: 500px;
+        width: 100%;
+        animation: slideUp 0.5s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .success-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, var(--color-success), #48bb78);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem;
+        font-size: 3.5rem;
+        animation: checkmark 0.6s ease;
+        box-shadow: 0 8px 24px rgba(72, 187, 120, 0.3);
+    }
+
+    @keyframes checkmark {
+        0% {
+            transform: scale(0);
+            opacity: 0;
+        }
+        50% {
+            transform: scale(1.1);
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .success-card h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--color-text);
+        margin: 0 0 1rem 0;
+    }
+
+    .success-card p {
+        font-size: 1.1rem;
+        color: var(--color-text-secondary);
+        margin: 0 0 2rem 0;
+        line-height: 1.6;
+    }
+
+    .btn-back {
+        display: inline-block;
+        text-decoration: none;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+        color: white;
+        padding: 1rem 2.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-back::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-back:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-back:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .btn-back span {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .divider {
+        height: 1px;
+        background: var(--color-border);
+        margin: 2rem 0;
+    }
+
+    .success-details {
+        background: linear-gradient(135deg, rgba(72, 187, 120, 0.1), rgba(72, 187, 120, 0.05));
+        border-left: 4px solid var(--color-success);
+        padding: 1rem 1.5rem;
+        border-radius: var(--radius-md);
+        margin-bottom: 2rem;
+        text-align: left;
+    }
+
+    .success-details strong {
+        color: var(--color-text);
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .success-details ul {
+        margin: 0;
+        padding-left: 1.5rem;
+        color: var(--color-text-secondary);
+    }
+
+    .success-details li {
+        margin: 0.25rem 0;
+    }
+
+    @media (max-width: 768px) {
+        .success-card {
+            padding: 2rem 1.5rem;
         }
 
-        .container {
-            text-align: center;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: 15px;
-            padding: 20px 40px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        .success-card h1 {
+            font-size: 1.75rem;
         }
 
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 20px;
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            font-size: 3rem;
         }
+    }
+</style>
 
-        p {
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-        }
+<div class="success-container">
+    <div class="success-card">
+        <div class="success-icon">✓</div>
 
-        a {
-            text-decoration: none;
-            background: #ffb900;
-            color: #000;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-
-        a:hover {
-            background: #ff9100;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
         <h1>Upload Successful!</h1>
+
         <p>Your clients have been uploaded successfully.</p>
-        <a href="{% url 'client_list' %}">Go back to client list</a>
+
+        <div class="success-details">
+            <strong>✅ What happens next:</strong>
+            <ul>
+                <li>All client records are now in the system</li>
+                <li>You can view and manage them in the client list</li>
+                <li>Relationship managers have been assigned</li>
+            </ul>
+        </div>
+
+        <a href="{% url 'client_list' %}" class="btn-back">
+            <span>
+                <span>←</span>
+                <span>Go to Client List</span>
+            </span>
+        </a>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

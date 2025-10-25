@@ -1,0 +1,280 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    .leads-container { max-width: 1400px; margin: 0 auto; }
+    .page-header {
+        background: var(--color-surface);
+        padding: 32px 30px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        margin: 0 0 30px 0;
+        border-left: 5px solid var(--color-primary);
+    }
+    .page-header h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin: 0 0 8px 0;
+    }
+    .page-header p {
+        color: var(--color-text-secondary);
+        margin: 0;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 30px;
+        justify-content: flex-end;
+    }
+    .action-btn {
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        padding: 12px 28px;
+        border-radius: var(--radius-md);
+        border: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--color-info);
+        color: white;
+        cursor: pointer;
+    }
+    .action-btn.export {
+        background: var(--color-accent);
+    }
+    .action-btn:hover { filter: brightness(0.93); }
+
+    .filter-card {
+        background: var(--color-surface);
+        padding: 28px 20px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 35px;
+    }
+    .filter-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 20px; }
+    .filter-form label { font-weight: 600; font-size: 0.88rem; margin-bottom: 4px; color: var(--color-text-secondary);}
+    .filter-form input, .filter-form select {
+        width: 100%;
+        padding: 10px 12px; border: 2px solid var(--color-border);
+        border-radius: var(--radius-sm); font-size: 0.98rem; background: var(--color-surface);
+        color: var(--color-text);
+    }
+    .filter-form input:focus, .filter-form select:focus {
+        border-color: var(--color-primary); outline: none; box-shadow: 0 0 0 4px rgba(102,126,234,0.085);
+    }
+    .filter-form button {
+        background: linear-gradient(135deg, var(--color-success), #48bb78);
+        color: white; border: none;
+        border-radius: var(--radius-sm); padding: 10px 32px;
+        font-weight: 600; font-size: 1rem; cursor: pointer; transition: 0.2s;
+        margin-top: 5px;
+    }
+    .filter-form button:hover { transform: translateY(-2px); }
+    /* Summary Cards */
+    .summary-cards {
+        display: grid; grid-template-columns: repeat(2, minmax(180px,1fr));
+        gap: 18px; margin: 30px 0;
+    }
+    .summary-card {
+        padding: 25px;
+        border-radius: var(--radius-md);
+        background: var(--color-surface);
+        box-shadow: var(--shadow-sm);
+        border-left: 6px solid var(--color-success);
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: flex-start;
+    }
+    .summary-card.closed { border-left-color: var(--color-info);}
+    .summary-label { text-transform: uppercase; font-size: 0.82rem; color: var(--color-text-secondary); font-weight: 600;}
+    .summary-value { font-size: 2.1rem; font-weight: 700; color: var(--color-success);}
+    .summary-card.closed .summary-value { color: var(--color-info); }
+    .table-card { background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: 30px; }
+    .table-responsive { overflow-x: auto;}
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 15px 13px; border-bottom: 1px solid var(--color-border); }
+    th {
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+        color: white; font-size: 0.96rem; letter-spacing: 0.7px;
+    }
+    tr:last-child td { border-bottom: none;}
+    tbody tr:hover { background: rgba(102,126,234,0.06);}
+    .status-badge { border-radius: 8px; padding: 3px 13px; font-size: 0.78rem; font-weight: 700;}
+    .status-open { background: rgba(237,137,54,0.13); color: var(--color-warning);}
+    .status-closed { background: rgba(72,187,120,0.18); color: var(--color-success);}
+    .text-emph { font-weight: 600; }
+    .actions { display: flex; gap: 8px; }
+    .btn-action {
+        font-size: 0.95rem; padding: 6px 13px;
+        border-radius: var(--radius-sm);
+        background: var(--color-info); color: white;
+        border: none; cursor: pointer;
+        text-decoration: none; font-weight: 600;
+        transition: all 0.13s;
+        display: inline-block;
+    }
+    .btn-action.update { background: var(--color-warning); color: #2d3748; }
+    .btn-action.delete { background: var(--color-danger);}
+    .btn-action.transfer { background: var(--color-success);}
+    .btn-action:hover { filter: brightness(1.08);}
+    .empty-state { text-align: center; padding: 52px 15px 40px 15px; color: var(--color-text-secondary);}
+    .empty-state-icon { font-size: 3.2rem; opacity: 0.52; margin-bottom: 10px;}
+    .pagination { display: flex; justify-content: center; gap: 10px; margin: 32px 0 0 0;}
+    .pagination a, .pagination span {
+        padding: 9px 17px; background: var(--color-surface);
+        border-radius: var(--radius-sm); font-weight: 600; color: var(--color-primary);
+        text-decoration: none; font-size: 1.01rem; box-shadow: var(--shadow-sm);
+        border: 2px solid transparent;
+        transition: all 0.19s;
+    }
+    .pagination a:hover { background: var(--color-primary); color: white;}
+    .pagination .disabled { color: var(--color-text-secondary); background: var(--color-border);}
+    .pagination .active { background: var(--color-primary); color: white;}
+    @media (max-width: 900px) {.leads-container {padding: 0 10px;} .summary-cards {grid-template-columns:1fr;}}
+</style>
+
+<div class="leads-container">
+
+    <div class="page-header">
+        <h2>📋 Leads Management</h2>
+        <p>Track and manage your sales leads efficiently.</p>
+    </div>
+
+    <div class="action-buttons">
+        <a href="{% url 'bulk_leads_upload' %}" class="action-btn">
+            <span>📤</span><span>Upload Leads</span>
+        </a>
+        <a href="{% url 'leads_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="action-btn export">
+            <span>💾</span><span>Export Leads</span>
+        </a>
+    </div>
+
+    <div class="filter-card">
+        <form method="get" action="" class="filter-form">
+            <div>
+                <label>Status</label>
+                <select name="status">
+                    <option value="">All</option>
+                    {% for code, label in status_choices %}
+                    <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Relationship Manager</label>
+                <input type="text" name="rm" placeholder="RM ID or Name" value="{{ rm_filter }}">
+            </div>
+            <div>
+                <label>BDM</label>
+                <input type="text" name="bdm" placeholder="BDM ID or Name" value="{{ bdm_filter }}">
+            </div>
+            <div>
+                <label>Start Date</label>
+                <input type="date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div>
+                <label>End Date</label>
+                <input type="date" name="end_date" value="{{ end_date }}">
+            </div>
+            <div>
+                <label>Search</label>
+                <input type="text" name="search" placeholder="Search leads..." value="{{ search_query }}">
+            </div>
+            <div>
+                <button type="submit">🔎 Apply Filters</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="summary-label">🟢 Open Leads</div>
+            <div class="summary-value">{{ open_leads_count }}</div>
+        </div>
+        <div class="summary-card closed">
+            <div class="summary-label">✅ Closed Leads</div>
+            <div class="summary-value">{{ closed_leads_count }}</div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Lead Info</th>
+                        <th>BDM</th>
+                        <th>RM</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in page_obj %}
+                    <tr>
+                        <td class="text-emph">{% if lead.client %}{{ lead.client.name }}{% else %}{{ lead.temp_client_name|default:"—" }}{% endif %}</td>
+                        <td>{% if lead.client %}{{ lead.client.email }}{% else %}{{ lead.temp_client_email|default:"—" }}{% endif %}</td>
+                        <td>{% if lead.client %}{{ lead.client.phone }}{% else %}{{ lead.temp_client_phone|default:"—" }}{% endif %}</td>
+                        <td>{{ lead.lead_info|truncatewords:10 }}</td>
+                        <td>{% if lead.generated_by %}{{ lead.generated_by.user.get_full_name }}{% else %}<span style="color:var(--color-text-secondary);">—</span>{% endif %}</td>
+                        <td>{% if lead.relationship_manager %}{{ lead.relationship_manager.get_full_name }}{% else %}<span style="color:var(--color-text-secondary);">—</span>{% endif %}</td>
+                        <td><span class="status-badge {% if lead.status == 'open' %}status-open{% else %}status-closed{% endif %}">{{ lead.get_status_display }}</span></td>
+                        <td>{{ lead.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="actions">
+                                {% if perms.crm.change_lead %}
+                                <a href="{% url 'edit_lead' lead.id %}" class="btn-action update">✏️ Update</a>
+                                {% endif %}
+                                {% if user.is_superuser %}
+                                <a href="{% url 'delete_lead' lead.id %}" class="btn-action delete" onclick="return confirm('Are you sure?')">🗑️ Delete</a>
+                                <form method="post" action="{% url 'transfer_lead_to_client' lead.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-action transfer">➡️ Transfer</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <h3 style="color: var(--color-text); margin-bottom: 10px;">No leads found</h3>
+                                <p>Try adjusting your filters or create a new lead</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page=1{{ request.GET.urlencode|cut:'page='|yesno:':&' }}{{ request.GET.urlencode|cut:'page=' }}" >First</a>
+            <a href="?page={{ page_obj.previous_page_number }}{{ request.GET.urlencode|cut:'page='|yesno:':&' }}{{ request.GET.urlencode|cut:'page=' }}">Previous</a>
+        {% else %}
+            <span class="disabled">First</span>
+            <span class="disabled">Previous</span>
+        {% endif %}
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{{ request.GET.urlencode|cut:'page='|yesno:':&' }}{{ request.GET.urlencode|cut:'page=' }}">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{{ request.GET.urlencode|cut:'page='|yesno:':&' }}{{ request.GET.urlencode|cut:'page=' }}">Last</a>
+        {% else %}
+            <span class="disabled">Next</span>
+            <span class="disabled">Last</span>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

@@ -1,15 +1,35 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
+
+
+#add BDM
+class BusinessDevelopmentManager(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='bdm_profile')
+    contact_number = models.CharField(max_length=20, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    joining_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return self.user.get_full_name() or self.user.username
+
 
 class Client(models.Model):
     name = models.CharField(max_length=255)
     email = models.EmailField()
-    phone = models.CharField(max_length=15)
+    phone = models.CharField(max_length=10)
     pan = models.CharField(max_length=10, blank=True, null=True)  # Added PAN field
     relationship_manager = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='clients'
     )
-
+    sourced_by = models.ForeignKey(
+        BusinessDevelopmentManager,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sourced_clients',
+        help_text="BDM who sourced the client"
+    )
     def __str__(self):
         return self.name
 
@@ -20,13 +40,7 @@ class Client(models.Model):
         # Validate PAN format if provided
         if self.pan and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', self.pan):
             raise ValidationError("Invalid PAN format.")
-class Lead(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='leads')
-    lead_info = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Lead for {self.client.name}"
 
 class Meeting(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='meetings')
@@ -38,7 +52,7 @@ class Meeting(models.Model):
         choices=[('Completed', 'Completed'), ('Pending', 'Pending')],
         default='Pending'
     )
-
+    updated_time = models.DateTimeField(auto_now=True)
     def __str__(self):
         return f"Meeting with {self.client.name} on {self.date}"
 
@@ -62,6 +76,23 @@ class Sale(models.Model):
     fund_name = models.CharField(max_length=255, blank=True, null=True)  # Optional field for SIP
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     sale_date = models.DateField()
+    relationship_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='sales')
+    bdm = models.ForeignKey(
+        BusinessDevelopmentManager,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sales'
+    )
+
+    def save(self, *args, **kwargs):
+        # If BDM not explicitly set, assign from client sourcing BDM
+        if not self.bdm and self.client.sourced_by:
+            self.bdm = self.client.sourced_by
+        super().save(*args, **kwargs)
+
+        # After saving Sale, close any open lead for this client
+        Lead.objects.filter(client=self.client, status='open').update(status='closed')
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -79,3 +110,141 @@ class Sale(models.Model):
         if self.product == 'SIP' and self.fund_name:
             return f"{product_name} ({self.fund_name}) for {self.client.name}"
         return f"{product_name} for {self.client.name}"
+
+class ClientRMHistory(models.Model):
+    client = models.ForeignKey('Client', on_delete=models.CASCADE, related_name='rm_history')
+    relationship_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='client_history')
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)  # Null means current RM
+
+    class Meta:
+        ordering = ['client', 'start_date']
+        verbose_name = "Client RM History"
+        verbose_name_plural = "Client RM Histories"
+
+    def __str__(self):
+        end = self.end_date if self.end_date else "Present"
+        return f"{self.client.name} - {self.relationship_manager.get_full_name()} ({self.start_date} to {end})"
+
+
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+
+
+# Add this new Call model to your existing models.py
+
+class Call(models.Model):
+    CALL_TYPE_CHOICES = [
+        ('incoming', 'Incoming'),
+        ('outgoing', 'Outgoing'),
+        ('missed', 'Missed'),
+    ]
+
+    CALL_STATUS_CHOICES = [
+        ('connected', 'Connected'),
+        ('busy', 'Busy'),
+        ('no_answer', 'No Answer'),
+        ('disconnected', 'Disconnected'),
+        ('failed', 'Failed'),
+    ]
+
+    CALL_PURPOSE_CHOICES = [
+        ('follow_up', 'Follow Up'),
+        ('new_business', 'New Business'),
+        ('service_request', 'Service Request'),
+        ('complaint', 'Complaint'),
+        ('information', 'Information'),
+        ('portfolio_review', 'Portfolio Review'),
+        ('other', 'Other'),
+    ]
+
+    client = models.ForeignKey('Client', on_delete=models.CASCADE, related_name='calls')
+    relationship_manager = models.ForeignKey(User, on_delete=models.CASCADE, related_name='calls_made')
+    call_type = models.CharField(max_length=20, choices=CALL_TYPE_CHOICES, default='outgoing')
+    call_status = models.CharField(max_length=20, choices=CALL_STATUS_CHOICES)
+    call_purpose = models.CharField(max_length=50, choices=CALL_PURPOSE_CHOICES, default='follow_up')
+
+    # Time tracking
+    call_start_time = models.DateTimeField(default=timezone.now)
+    call_end_time = models.DateTimeField(null=True, blank=True)
+    duration_minutes = models.IntegerField(null=True, blank=True, help_text="Duration in minutes")
+
+    # Call details
+    phone_number = models.CharField(max_length=20, help_text="Phone number used for the call")
+    notes = models.TextField(blank=True, help_text="Call conversation notes")
+    follow_up_required = models.BooleanField(default=False)
+    follow_up_date = models.DateField(null=True, blank=True)
+
+    # Performance tracking
+    connection_time_seconds = models.IntegerField(null=True, blank=True, help_text="Time taken to connect in seconds")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-call_start_time']
+
+    def __str__(self):
+        return f"{self.client.name} - {self.call_type} - {self.call_start_time.strftime('%Y-%m-%d %H:%M')}"
+
+    def get_duration_display(self):
+        """Return formatted duration"""
+        if self.duration_minutes:
+            hours = self.duration_minutes // 60
+            minutes = self.duration_minutes % 60
+            if hours > 0:
+                return f"{hours}h {minutes}m"
+            return f"{minutes}m"
+        return "N/A"
+
+    def get_connection_time_display(self):
+        """Return formatted connection time"""
+        if self.connection_time_seconds:
+            if self.connection_time_seconds >= 60:
+                minutes = self.connection_time_seconds // 60
+                seconds = self.connection_time_seconds % 60
+                return f"{minutes}m {seconds}s"
+            return f"{self.connection_time_seconds}s"
+        return "N/A"
+
+
+class Lead(models.Model):
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+    ]
+    relationship_manager = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='leads'
+    )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name='leads',
+        null=True,       # allow client to be empty
+        blank=True       # allow form/admin to leave it blank
+    )
+    lead_info = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    generated_by = models.ForeignKey(
+        BusinessDevelopmentManager,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='leads_generated'
+    )
+
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open')
+
+    # Optional: store client info temporarily if no Client exists
+    temp_client_name = models.CharField(max_length=255, blank=True, null=True)
+    temp_client_email = models.EmailField(blank=True, null=True)
+    temp_client_phone = models.CharField(max_length=20, blank=True, null=True)
+
+    def __str__(self):
+        if self.client:
+            return f"Lead for {self.client.name}"
+        return f"Lead for {self.temp_client_name or 'Unknown Client'}"

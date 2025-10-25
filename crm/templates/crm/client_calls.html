@@ -1,0 +1,277 @@
+{% extends 'crm/base.html' %}
+
+{% block title %}{{ client.name }} - Call History{% endblock %}
+
+{% block content %}
+<style>
+    /* Page-specific overrides */
+    .breadcrumb-nav {
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        color: var(--color-text-secondary);
+    }
+
+    .breadcrumb-nav a {
+        color: var(--color-primary);
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    .breadcrumb-nav a:hover {
+        color: var(--color-primary-light);
+        text-decoration: underline;
+    }
+
+    .breadcrumb-sep {
+        margin: 0 0.5rem;
+        color: var(--color-text-secondary);
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .page-header h2 {
+        color: white;
+        margin: 0 0 1rem 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+
+    .client-info-card {
+        background: rgba(255, 255, 255, 0.15);
+        border-left: 4px solid white;
+        padding: 1.25rem 1.5rem;
+        border-radius: var(--radius-md);
+        backdrop-filter: blur(10px);
+        margin-bottom: 1.5rem;
+    }
+
+    .client-info-card h5 {
+        color: white;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        font-size: 1rem;
+    }
+
+    .client-info-card p {
+        color: rgba(255, 255, 255, 0.95);
+        margin: 0.4rem 0;
+        font-size: 0.9rem;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-add-call {
+        background: var(--color-success);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-add-call:hover {
+        background: #48bb78;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    }
+
+    .btn-back-to-clients {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-back-to-clients:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    @media (max-width: 768px) {
+        .header-actions {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .btn-add-call,
+        .btn-back-to-clients {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<div style="max-width: 1200px; margin: 0 auto; padding: 0 1rem;">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb-nav" aria-label="breadcrumb">
+        <a href="{% url 'home' %}">🏠 Dashboard</a>
+        <span class="breadcrumb-sep">›</span>
+        <a href="{% url 'client_list' %}">👥 Clients</a>
+        <span class="breadcrumb-sep">›</span>
+        <span>Call History</span>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2>📞 Call History - {{ client.name }}</h2>
+
+        <div class="client-info-card">
+            <h5>Client Information</h5>
+            <p><strong>📧 Email:</strong> {{ client.email|default:'-' }}</p>
+            <p><strong>📱 Phone:</strong> {{ client.phone|default:'-' }}</p>
+            <p><strong>👤 RM:</strong> {{ client.relationship_manager.get_full_name }}</p>
+        </div>
+
+        <div class="header-actions">
+            <a href="{% url 'add_call' client.id %}" class="btn-add-call">
+                <span>➕</span>
+                <span>Add New Call</span>
+            </a>
+            <a href="{% url 'client_list' %}" class="btn-back-to-clients">
+                <span>←</span>
+                <span>Back to Clients</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Purpose</th>
+                        <th>Duration</th>
+                        <th>Connection</th>
+                        <th>Follow-up</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for call in page_obj %}
+                    <tr>
+                        <td>{{ call.call_start_time|date:"M d, Y - h:i A" }}</td>
+                        <td>
+                            <span class="badge {% if call.call_type == 'incoming' %}badge-success{% elif call.call_type == 'outgoing' %}badge-primary{% else %}badge-warning{% endif %}">
+                                {{ call.get_call_type_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {% if call.call_status == 'completed' %}badge-success{% elif call.call_status == 'busy' or call.call_status == 'no_answer' %}badge-warning{% else %}badge-danger{% endif %}">
+                                {{ call.get_call_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ call.get_call_purpose_display }}</td>
+                        <td>
+                            {% if call.duration_minutes %}
+                                {{ call.duration_minutes }}m
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if call.connection_time_seconds %}
+                                {{ call.connection_time_seconds }}s
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if call.follow_up_required %}
+                                <span class="badge badge-warning">
+                                    {% if call.follow_up_date %}
+                                        {{ call.follow_up_date|date:"M d" }}
+                                    {% else %}
+                                        Required
+                                    {% endif %}
+                                </span>
+                            {% else %}
+                                <span style="color: var(--color-text-secondary);">No</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons-inline">
+                                <a href="{% url 'call_detail' call.id %}" class="btn-icon btn-view" title="View Details">👁️</a>
+                                <a href="{% url 'update_call' call.id %}" class="btn-icon btn-edit" title="Edit">✏️</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" style="padding: 0;">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📞</div>
+                                <h6 style="font-size: 1.2rem; color: var(--color-text); margin-bottom: 0.5rem;">No call records found</h6>
+                                <p style="color: var(--color-text-secondary); margin-bottom: 1.5rem;">Start tracking calls for this client</p>
+                                <a href="{% url 'add_call' client.id %}" class="btn btn-primary">
+                                    <span>📞</span>
+                                    <span>Add First Call Record</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="pagination-container">
+            <nav class="pagination">
+                {% if page_obj.has_previous %}
+                <a href="?page=1" class="page-link">First</a>
+                <a href="?page={{ page_obj.previous_page_number }}" class="page-link">Previous</a>
+                {% endif %}
+
+                <span class="page-info">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="page-link">Next</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}" class="page-link">Last</a>
+                {% endif %}
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -2,229 +2,138 @@
 
 {% block content %}
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-    }
-
-    h2 {
-        text-align: center;
-        margin-top: 20px;
-        color: #2c3e50;
-    }
-
-    .table-container {
-        max-width: 1200px;
-        margin: 20px auto;
-        padding: 20px;
-        background: #ffffff;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    th, td {
-        padding: 15px;
-        text-align: left;
-        vertical-align: top; /* Align content to the top */
-    }
-
-    th {
-        background-color: #2c3e50;
-        color: white;
-        font-weight: bold;
-    }
-
-    tr:nth-child(even) {
-        background-color: #f9f9f9;
-    }
-
-    tr:hover {
-        background-color: #f1f1f1;
-    }
-
-    .action-buttons {
-        display: flex; /* Use flexbox to align buttons horizontally */
-        gap: 10px; /* Space between buttons */
-    }
-
-    .action-buttons a {
-        text-decoration: none;
-        padding: 8px 12px;
-        border-radius: 5px;
-        font-size: 0.9rem;
-        transition: background-color 0.3s;
-    }
-
-    .action-buttons .update {
-        background-color: #007bff;
-        color: white;
-    }
-
-    .action-buttons .update:hover {
-        background-color: #0056b3;
-    }
-
-    .action-buttons .delete {
-        background-color: #dc3545;
-        color: white;
-    }
-
-    .action-buttons .delete:hover {
-        background-color: #a71d2a;
-    }
-
-    td {
-        word-wrap: break-word; /* Allow long text to wrap within a cell */
-        white-space: normal;
-    }
-
-    .filter-form {
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: flex-start;
-        gap: 20px;
-    }
-
-    .filter-form select {
-        padding: 10px;
-        border-radius: 5px;
-        font-size: 1rem;
-        border: 1px solid #ccc;
-    }
-
-
-    .pagination {
-        text-align: center;
-        margin: 20px 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 10px; /* Space between links */
-    }
-
-    .pagination a {
-        text-decoration: none;
-        padding: 10px 15px;
-        background-color: #28a745;
-        color: white;
-        border-radius: 5px;
-        font-weight: bold;
-        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
-        transition: background-color 0.3s, transform 0.2s;
-    }
-
-    .pagination a:hover {
-        background-color: #218838;
-        transform: scale(1.05); /* Slight scaling effect on hover */
-    }
-
-    .pagination span {
-        padding: 8px 12px;
-        font-weight: bold;
-        color: #2c3e50;
-        font-size: 1rem;
-        border-radius: 5px;
-    }
-
-    .pagination .disabled {
-        background-color: #f8f9fa;
-        color: #6c757d;
-        box-shadow: none;
-        cursor: not-allowed;
-        opacity: 0.7;
+    /* Page-specific overrides only */
+    main {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
     }
 </style>
 
-<h2>Meetings List</h2>
+<div class="container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2>📅 Meetings Management</h2>
+        <p>Track and manage client meetings efficiently</p>
+    </div>
 
-<div class="table-container">
-    <div class="filter-form">
-        <form method="get" action="">
-            <label for="remark">Filter by Remark:</label>
-            <select name="remark" id="remark" onchange="this.form.submit()">
-                <option value="">All</option>
-                <option value="Pending" {% if filter_remark == 'Pending' %}selected{% endif %}>Pending</option>
-                <option value="Completed" {% if filter_remark == 'Completed' %}selected{% endif %}>Completed</option>
-            </select>
+    <!-- Filter Card -->
+    <div class="filter-card">
+        <div class="filter-header">
+            <div class="filter-title">Filter Meetings</div>
+            <div class="action-buttons">
+                {% if user.is_authenticated and user.is_superuser %}
+                    <a href="{% url 'upload_meetings' %}" class="action-btn btn-upload">
+                        <span>📤</span>
+                        <span>Upload</span>
+                    </a>
+                {% endif %}
+                <a href="{% url 'export_meetings' %}" class="action-btn btn-export">
+                    <span>💾</span>
+                    <span>Export</span>
+                </a>
+            </div>
+        </div>
+
+        <form method="get" action="" class="filter-form">
+            <div class="form-group">
+                <label for="remark">Status</label>
+                <select name="remark" id="remark">
+                    <option value="">All</option>
+                    <option value="Pending" {% if filter_remark == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Completed" {% if filter_remark == 'Completed' %}selected{% endif %}>Completed</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="start_date">Start Date</label>
+                <input type="date" name="start_date" id="start_date" value="{{ start_date|default:'' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="end_date">End Date</label>
+                <input type="date" name="end_date" id="end_date" value="{{ end_date|default:'' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="search">Search</label>
+                <input type="text" name="search" id="search" placeholder="Client or RM..." value="{{ search_query|default:'' }}">
+            </div>
+
+            <div class="form-group">
+                <button type="submit">🔎 Search</button>
+            </div>
         </form>
     </div>
 
-    {% if request.user.is_superuser %}
-    <div class="export-buttons" style="text-align: center; margin-bottom: 20px;">
-        <a href="{% url 'export_meetings' %}" style="background-color: #007bff; color: white; padding: 10px 15px; border-radius: 5px; text-decoration: none;">
-            Export Meetings to Excel
-        </a>
+    <!-- Meetings Table -->
+    <div class="table-card">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>RM</th>
+                        <th>Date</th>
+                        <th>Notes</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for meeting in page_obj %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ meeting.client.name }}</td>
+                        <td>{{ meeting.relationship_manager.get_full_name }}</td>
+                        <td>{{ meeting.date|date:"M d, Y" }}</td>
+                        <td>{{ meeting.notes|truncatewords:10 }}</td>
+                        <td>
+                            <span class="badge {% if meeting.remark == 'Pending' %}badge-warning{% else %}badge-success{% endif %}">
+                                {{ meeting.remark }}
+                            </span>
+                        </td>
+                        <td>{{ meeting.updated_time|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <div class="table-actions">
+                                <a href="{% url 'update_meeting' meeting.id %}" class="btn-action btn-update">✏️ Update</a>
+                                <a href="{% url 'delete_meeting' meeting.id %}" class="btn-action btn-delete" onclick="return confirm('Are you sure?')">🗑️ Delete</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <h3 style="color: var(--color-text); margin-bottom: 10px;">No meetings found</h3>
+                                <p>Try adjusting your filters or create a new meeting</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-    {% endif %}
 
-    {% if client %}
-        <p><strong>Client:</strong> {{ client.name }}</p>
-        <a href="{% url 'add_meeting' client.id %}" class="add-meeting-btn">Add Meeting</a>
-    {% else %}
-        {% if request.user.is_superuser %}
-            <p><strong>All Clients:</strong> Showing meetings for all clients (Superuser).</p>
+    <!-- Pagination -->
+    <div class="pagination">
+        {% if page_obj.has_previous %}
+            <a href="?page=1{% if filter_remark %}&remark={{ filter_remark }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
         {% else %}
-            <p><strong>Your Meetings:</strong> Showing all meetings assigned to you across all clients.</p>
+            <span class="disabled">First</span>
+            <span class="disabled">Previous</span>
         {% endif %}
-    {% endif %}
 
-    <table>
-        <thead>
-            <tr>
-                <th>Client Name</th>
-                <th>Relationship Manager</th>
-                <th>Date</th>
-                <th>Notes</th>
-                <th>Remark</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for meeting in page_obj %}
-            <tr>
-                <td>{{ meeting.client.name }}</td>
-                <td>{{ meeting.relationship_manager.get_full_name }}</td>
-                <td>{{ meeting.date }}</td>
-                <td>{{ meeting.notes }}</td>
-                <td>{{ meeting.remark }}</td>
-                <td class="action-buttons">
-                    <a href="{% url 'update_meeting' meeting.id %}" class="update">Update</a>
-                    <a href="{% url 'delete_meeting' meeting.id %}" class="delete">Delete</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" style="text-align: center;">No meetings found for the selected filter.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
 
-<!-- Pagination Controls -->
-<div class="pagination">
-    {% if page_obj.has_previous %}
-        <a href="?page=1{% if filter_remark %}&remark={{ filter_remark }}{% endif %}">First</a>
-        <a href="?page={{ page_obj.previous_page_number }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}">Previous</a>
-    {% else %}
-        <span class="disabled">First</span>
-        <span class="disabled">Previous</span>
-    {% endif %}
-
-    <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-
-    {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}">Next</a>
-        <a href="?page={{ page_obj.paginator.num_pages }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}">Last</a>
-    {% else %}
-        <span class="disabled">Next</span>
-        <span class="disabled">Last</span>
-    {% endif %}
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
+        {% else %}
+            <span class="disabled">Next</span>
+            <span class="disabled">Last</span>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

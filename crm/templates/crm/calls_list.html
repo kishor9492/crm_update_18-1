@@ -1,0 +1,282 @@
+{% extends 'crm/base.html' %}
+
+{% block title %}Call Records{% endblock %}
+
+{% block content %}
+<style>
+    /* Page-specific overrides */
+    .page-header {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .page-header h2 {
+        color: white;
+        margin: 0 0 1rem 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-export {
+        background: var(--color-success);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-export:hover {
+        background: #48bb78;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    }
+
+    .btn-upload {
+        background: rgba(23, 162, 184, 1);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-upload:hover {
+        background: #138496;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+    }
+
+    .btn-analytics {
+        background: linear-gradient(135deg, #ffc107, #ff9800);
+        color: #333;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn-analytics:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+    }
+
+    .filter-section {
+        background: var(--color-surface);
+        padding: 1.5rem;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 2rem;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .header-actions {
+            width: 100%;
+        }
+
+        .btn-export,
+        .btn-upload,
+        .btn-analytics {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .filter-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="page-header">
+    <h2>📞 Call Records</h2>
+    <div class="header-actions">
+        <a href="{% url 'export_calls_csv' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn-export">
+            <span>📥</span>
+            <span>Export CSV</span>
+        </a>
+        {% if user.is_superuser %}
+        <a href="{% url 'upload_calls' %}" class="btn-upload">
+            <span>⬆️</span>
+            <span>Bulk Upload</span>
+        </a>
+        <a href="{% url 'calls_analytics' %}" class="btn-analytics">
+            <span>📊</span>
+            <span>Analytics</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="filter-section">
+    <form method="get">
+        <div class="filter-grid">
+            {% if user.is_superuser %}
+            <div class="form-group">
+                <label>Relationship Manager</label>
+                {{ filter_form.relationship_manager }}
+            </div>
+            {% endif %}
+            <div class="form-group">
+                <label>Call Type</label>
+                {{ filter_form.call_type }}
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                {{ filter_form.call_status }}
+            </div>
+            <div class="form-group">
+                <label>Purpose</label>
+                {{ filter_form.call_purpose }}
+            </div>
+            <div class="form-group">
+                <label>Start Date</label>
+                {{ filter_form.start_date }}
+            </div>
+            <div class="form-group">
+                <label>End Date</label>
+                {{ filter_form.end_date }}
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label>Client Name</label>
+                {{ filter_form.client_name }}
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary">🔍 Filter</button>
+            <a href="{% url 'calls_list' %}" class="btn btn-secondary">↻ Clear</a>
+        </div>
+    </form>
+</div>
+
+<div class="table-card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Phone</th>
+                    {% if user.is_superuser %}<th>RM</th>{% endif %}
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Purpose</th>
+                    <th>Start Time</th>
+                    <th>Duration</th>
+                    <th>Connection</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for call in page_obj %}
+                <tr>
+                    <td><a href="{% url 'client_calls' call.client.id %}" style="color: var(--color-primary); font-weight: 600;">{{ call.client.name }}</a></td>
+                    <td>{{ call.phone_number }}</td>
+                    {% if user.is_superuser %}
+                    <td>{{ call.relationship_manager.get_full_name }}</td>
+                    {% endif %}
+                    <td>
+                        <span class="badge {% if call.call_type == 'incoming' %}badge-success{% elif call.call_type == 'outgoing' %}badge-primary{% else %}badge-warning{% endif %}">
+                            {{ call.get_call_type_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {% if call.call_status == 'completed' %}badge-success{% elif call.call_status == 'busy' or call.call_status == 'no_answer' %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ call.get_call_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ call.get_call_purpose_display }}</td>
+                    <td>{{ call.call_start_time|date:"M d, Y - h:i A" }}</td>
+                    <td>
+                        {% if call.duration_minutes %}
+                            {{ call.duration_minutes }}m
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if call.connection_time_seconds %}
+                            {{ call.connection_time_seconds }}s
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons-inline">
+                            <a href="{% url 'call_detail' call.id %}" class="btn-icon btn-view" title="View Details">👁️</a>
+                            <a href="{% url 'update_call' call.id %}" class="btn-icon btn-edit" title="Edit">✏️</a>
+                            <a href="{% url 'delete_call' call.id %}" class="btn-icon btn-delete" title="Delete">🗑️</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{% if user.is_superuser %}10{% else %}9{% endif %}" style="text-align: center; padding: 3rem; color: var(--color-text-secondary);">
+                        <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;">📞</div>
+                        <div style="font-size: 1.1rem; font-weight: 600;">No call records found</div>
+                        <div style="margin-top: 0.5rem;">Try adjusting your filters or add new call records</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container">
+        <nav class="pagination">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="page-link">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="page-link">Previous</a>
+            {% endif %}
+
+            <span class="page-info">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="page-link">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" class="page-link">Last</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

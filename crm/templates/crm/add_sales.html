@@ -1,108 +1,380 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Sale</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f9fafc;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: #333;
-        }
-        .container {
-            background: #fff;
-            padding: 20px 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-        }
-        label {
-            margin-top: 15px;
-            font-size: 14px;
-            text-align: left;
-        }
-        input, select {
-            padding: 10px;
-            margin: 5px 0;
-            font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            width: 100%;
-        }
-        button {
-            margin-top: 20px;
-            padding: 10px 15px;
-            background-color: #3498db;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #2980b9;
-        }
-        a {
-            text-decoration: none;
-            color: #3498db;
-            font-size: 14px;
-            display: inline-block;
-            margin-top: 15px;
-        }
-        a:hover {
-            color: #2980b9;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Add Sale for {{ client.name }}</h1>
-        <form method="POST">
-            {% csrf_token %}
+{% extends 'crm/base.html' %}
 
-            <label for="product">Product:</label>
-            <select id="product" name="product" required>
-                <option value="SIP">Systematic Investment Plan</option>
-                <option value="LUMP">Lumpsum</option>
-                <option value="HI">Helath Insurance</option>
-                <option value="TI">Term Insurance</option>
-                <option value="PMS">PMS</option>
-                <option value="AIF">AIF</option>
-                <option value="WILL">Will</option>
-                <option value="GI">General Insurance</option>
-            </select>
-            <label for="fund_name">FundName:</label>
-            <input type="text" id="fund_name" name="fund_name" step="0.01" required>
+{% block content %}
+<style>
+    /* Page-specific overrides only */
+    main {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 80px);
+    }
 
-            <label for="amount">Amount:</label>
-            <input type="number" id="amount" name="amount" step="0.01" required>
+    .form-container {
+        max-width: 700px;
+        width: 100%;
+        padding: 50px 40px;
+        margin: 20px;
+        background: var(--color-surface);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-xl);
+        animation: slideUp 0.5s ease;
+    }
 
-            <label for="sale_date">Sale Date:</label>
-            <input type="date" id="sale_date" name="sale_date" required>
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
-            <button type="submit">Save Sale</button>
-        </form>
+    .form-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
 
-        <a href="{% url 'client_list' %}">Back to Client List</a>
+    .form-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 2.5rem;
+        box-shadow: var(--shadow-lg);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    .form-subtitle {
+        color: var(--color-text-secondary);
+        font-size: 0.95rem;
+    }
+
+    #sales-entries {
+        max-height: 400px;
+        overflow-y: auto;
+        padding-right: 10px;
+        margin-bottom: 20px;
+    }
+
+    #sales-entries::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    #sales-entries::-webkit-scrollbar-track {
+        background: var(--color-border);
+        border-radius: 4px;
+    }
+
+    #sales-entries::-webkit-scrollbar-thumb {
+        background: var(--color-primary);
+        border-radius: 4px;
+    }
+
+    .sale-entry {
+        background: var(--color-background);
+        padding: 20px;
+        border-radius: var(--radius-md);
+        margin-bottom: 20px;
+        border-left: 4px solid var(--color-primary);
+        position: relative;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .sale-entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .entry-number {
+        font-weight: 700;
+        color: var(--color-primary);
+        font-size: 0.9rem;
+    }
+
+    .btn-remove-entry {
+        background: var(--color-danger);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1.2rem;
+        line-height: 1;
+    }
+
+    .btn-remove-entry:hover {
+        background: #dc2626;
+        transform: scale(1.1);
+    }
+
+    .btn-add-more {
+        width: 100%;
+        padding: 12px;
+        background: var(--color-secondary);
+        color: var(--color-text);
+        border: 2px dashed var(--color-border);
+        border-radius: var(--radius-md);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
+
+    .btn-add-more:hover {
+        background: var(--color-secondary-hover);
+        border-color: var(--color-primary);
+        transform: translateY(-2px);
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, var(--color-success), #48bb78);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(56, 161, 105, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-submit::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-submit:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(56, 161, 105, 0.5);
+    }
+
+    .btn-submit span {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    /* Loading state */
+    .btn-submit.loading {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .btn-submit.loading::after {
+        content: '';
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    @media (max-width: 600px) {
+        .form-container {
+            padding: 40px 30px;
+        }
+
+        .form-icon {
+            width: 70px;
+            height: 70px;
+            font-size: 2rem;
+        }
+
+        .sale-entry {
+            padding: 15px;
+        }
+    }
+</style>
+
+<div class="form-container">
+    <div class="form-header">
+        <div class="form-icon">💰</div>
+        <h2 style="font-size: 2rem; color: var(--color-text); margin-bottom: 10px; font-weight: 700;">Add Sale for {{ client.name }}</h2>
+        <p class="form-subtitle">Add one or multiple sales transactions</p>
     </div>
-</body>
-</html>
+
+    <form id="sales-form" method="POST">
+        {% csrf_token %}
+
+        <div id="sales-entries">
+            <div class="sale-entry">
+                <div class="sale-entry-header">
+                    <span class="entry-number">Sale #1</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="product">Product</label>
+                    <select name="product[]" required>
+                        <option value="SIP">Systematic Investment Plan</option>
+                        <option value="LUMP">Lumpsum</option>
+                        <option value="HI">Health Insurance</option>
+                        <option value="TI">Term Insurance</option>
+                        <option value="PMS">PMS</option>
+                        <option value="AIF">AIF</option>
+                        <option value="WILL">Will</option>
+                        <option value="GI">General Insurance</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="fund_name">Fund Name</label>
+                    <input type="text" name="fund_name[]" placeholder="Enter fund name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="amount">Amount (₹)</label>
+                    <input type="number" name="amount[]" step="0.01" placeholder="0.00" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="sale_date">Sale Date</label>
+                    <input type="date" name="sale_date[]" required>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="btn-add-more" id="add-more-sales">
+            <span style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>➕</span>
+                <span>Add More Sales</span>
+            </span>
+        </button>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+            <span>
+                <span>💾</span>
+                <span>Save All Sales</span>
+            </span>
+        </button>
+    </form>
+
+    <a href="{% url 'client_list' %}" class="back-link">Back to Client List</a>
+</div>
+
+<script>
+    let saleCounter = 1;
+    const salesForm = document.getElementById('sales-form');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Add more sales entry
+    document.getElementById('add-more-sales').addEventListener('click', function () {
+        saleCounter++;
+        const salesEntries = document.getElementById('sales-entries');
+        const firstEntry = document.querySelector('.sale-entry');
+        const newEntry = firstEntry.cloneNode(true);
+
+        // Update entry number
+        newEntry.querySelector('.entry-number').textContent = `Sale #${saleCounter}`;
+
+        // Clear input values
+        newEntry.querySelectorAll('input, select').forEach(input => {
+            if (input.tagName === 'INPUT') {
+                input.value = '';
+            } else {
+                input.selectedIndex = 0;
+            }
+        });
+
+        // Add remove button if this is not the first entry
+        if (saleCounter > 1) {
+            const header = newEntry.querySelector('.sale-entry-header');
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn-remove-entry';
+            removeBtn.innerHTML = '×';
+            removeBtn.title = 'Remove this sale';
+            removeBtn.addEventListener('click', function() {
+                newEntry.remove();
+                updateEntryNumbers();
+            });
+            header.appendChild(removeBtn);
+        }
+
+        salesEntries.appendChild(newEntry);
+
+        // Scroll to new entry
+        salesEntries.scrollTop = salesEntries.scrollHeight;
+    });
+
+    // Update entry numbers after removal
+    function updateEntryNumbers() {
+        const entries = document.querySelectorAll('.sale-entry');
+        entries.forEach((entry, index) => {
+            entry.querySelector('.entry-number').textContent = `Sale #${index + 1}`;
+        });
+        saleCounter = entries.length;
+    }
+
+    // Form submission handler
+    salesForm.addEventListener('submit', function() {
+        submitBtn.classList.add('loading');
+        submitBtn.querySelector('span span:last-child').textContent = 'Saving...';
+        submitBtn.disabled = true;
+    });
+</script>
+{% endblock %}

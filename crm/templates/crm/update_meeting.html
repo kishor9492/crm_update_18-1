@@ -2,102 +2,204 @@
 
 {% block content %}
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 0;
-    }
-
-    h2 {
-        text-align: center;
-        margin-top: 20px;
-        color: #2c3e50;
+    /* Page-specific overrides only */
+    main {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 80px);
     }
 
     .form-container {
-        max-width: 800px;
-        margin: 20px auto;
-        padding: 20px;
-        background: #ffffff;
-        border-radius: 10px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    label {
-        font-weight: bold;
-        margin-bottom: 5px;
-        display: block;
-        color: #2c3e50;
-    }
-
-    input[type="datetime-local"],
-    textarea,
-    select {
+        max-width: 700px;
         width: 100%;
-        padding: 10px;
-        margin-bottom: 15px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        font-size: 1rem;
-        color: #555;
+        padding: 50px 40px;
+        margin: 20px;
+        background: var(--color-surface);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-xl);
+        animation: slideUp 0.5s ease;
     }
 
-    textarea {
-        resize: none;
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
-    button {
-        background-color: #007bff;
+    .form-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .form-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 2.5rem;
+        box-shadow: var(--shadow-lg);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    .form-subtitle {
+        color: var(--color-text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
         color: white;
         border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        font-size: 1rem;
+        border-radius: var(--radius-md);
+        font-size: 1.05rem;
+        font-weight: 700;
         cursor: pointer;
-        font-weight: bold;
-        transition: background-color 0.3s;
-        display: block;
-        margin: 0 auto;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        position: relative;
+        overflow: hidden;
+        margin-top: 10px;
     }
 
-    button:hover {
-        background-color: #0056b3;
+    .btn-submit::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
     }
 
-    .back-to-list {
-        display: inline-block;
-        margin-top: 20px;
-        text-align: center;
-        color: #007bff;
-        font-weight: bold;
-        text-decoration: none;
-        transition: color 0.3s;
+    .btn-submit:hover::before {
+        width: 300px;
+        height: 300px;
     }
 
-    .back-to-list:hover {
-        color: #0056b3;
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .btn-submit span {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    /* Loading state */
+    .btn-submit.loading {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .btn-submit.loading::after {
+        content: '';
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    @media (max-width: 600px) {
+        .form-container {
+            padding: 40px 30px;
+        }
+
+        .form-icon {
+            width: 70px;
+            height: 70px;
+            font-size: 2rem;
+        }
     }
 </style>
 
-<h2>Update Meeting</h2>
-
 <div class="form-container">
-    <form method="POST">
+    <div class="form-header">
+        <div class="form-icon">✏️</div>
+        <h2 style="font-size: 2rem; color: var(--color-text); margin-bottom: 10px; font-weight: 700;">Update Meeting</h2>
+        <p class="form-subtitle">Modify meeting details and status</p>
+    </div>
+
+    <form method="POST" id="meetingForm">
         {% csrf_token %}
-        <label for="date">Date:</label>
-        <input type="datetime-local" id="date" name="date" value="{{ meeting.date|date:'Y-m-d\\TH:i' }}" required>
 
-        <label for="notes">Notes:</label>
-        <textarea id="notes" name="notes" rows="4" required>{{ meeting.notes }}</textarea>
+        <div class="form-group">
+            <label for="date">Meeting Date & Time</label>
+            <input type="datetime-local" id="date" name="date" value="{{ meeting.date|date:'Y-m-d\TH:i' }}" required>
+        </div>
 
-        <label for="remark">Remark:</label>
-        <select id="remark" name="remark">
-            <option value="Pending" {% if meeting.remark == "Pending" %}selected{% endif %}>Pending</option>
-            <option value="Completed" {% if meeting.remark == "Completed" %}selected{% endif %}>Completed</option>
-        </select>
+        <div class="form-group">
+            <label for="notes">Meeting Notes</label>
+            <textarea id="notes" name="notes" rows="5" placeholder="Enter meeting notes..." required>{{ meeting.notes }}</textarea>
+        </div>
 
-        <button type="submit">Update Meeting</button>
+        <div class="form-group">
+            <label for="remark">Status</label>
+            <select id="remark" name="remark">
+                <option value="Pending" {% if meeting.remark == "Pending" %}selected{% endif %}>Pending</option>
+                <option value="Completed" {% if meeting.remark == "Completed" %}selected{% endif %}>Completed</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+            <span>
+                <span>💾</span>
+                <span>Update Meeting</span>
+            </span>
+        </button>
     </form>
-    <a href="{% url 'meetings_list' meeting.client.id %}" class="back-to-list">Back to Meetings List</a>
+
+    <a href="{% url 'meetings_list' %}" class="back-link">Back to Meetings List</a>
 </div>
+
+<script>
+    const meetingForm = document.getElementById('meetingForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Form submission handler
+    meetingForm.addEventListener('submit', function() {
+        submitBtn.classList.add('loading');
+        submitBtn.querySelector('span span:last-child').textContent = 'Updating...';
+        submitBtn.disabled = true;
+    });
+</script>
 {% endblock %}

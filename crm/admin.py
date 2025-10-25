@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Client, Lead, Meeting, Sale
+from .models import Client, Lead, Meeting, Sale, BusinessDevelopmentManager
 import pandas as pd
 from django.contrib import admin
 from django.contrib.auth.models import User
@@ -10,6 +10,11 @@ admin.site.site_header = "Samarth Wealth Pvt Ltd CRM"
 admin.site.site_title = "Samarth Wealth Pvt Ltd CRM"
 admin.site.index_title = "Welcome to CRM"
 
+@admin.register(BusinessDevelopmentManager)
+class BDMAdmin(admin.ModelAdmin):
+    list_display = ('user', 'department', 'joining_date')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'department')
+    list_filter = ('department', 'joining_date')
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
     list_display = ('name', 'email', 'phone', 'relationship_manager')

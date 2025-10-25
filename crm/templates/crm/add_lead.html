@@ -1,0 +1,272 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    /* Page-specific overrides only */
+    main {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 80px);
+    }
+
+    .form-container {
+        max-width: 700px;
+        width: 100%;
+        padding: 50px 40px;
+        margin: 20px;
+        background: var(--color-surface);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-xl);
+        animation: slideUp 0.5s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .form-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 2.5rem;
+        box-shadow: var(--shadow-lg);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+
+    .form-subtitle {
+        color: var(--color-text-secondary);
+        font-size: 0.95rem;
+    }
+
+    /* New Client Section */
+    .new-client-section {
+        background: rgba(75, 193, 193, 0.05);
+        border-left: 4px solid var(--color-accent);
+        border-radius: var(--radius-md);
+        padding: 25px;
+        margin: 25px 0;
+        transition: all 0.3s ease;
+    }
+
+    .new-client-section.hidden {
+        display: none;
+    }
+
+    .new-client-hint {
+        color: var(--color-text-secondary);
+        font-size: 0.9rem;
+        font-style: italic;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .new-client-hint::before {
+        content: '💡';
+        font-size: 1.2rem;
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        position: relative;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+
+    .btn-submit::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-submit:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .btn-submit span {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    /* Loading state */
+    .btn-submit.loading {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+
+    .btn-submit.loading::after {
+        content: '';
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    @media (max-width: 600px) {
+        .form-container {
+            padding: 40px 30px;
+        }
+
+        .form-icon {
+            width: 70px;
+            height: 70px;
+            font-size: 2rem;
+        }
+    }
+</style>
+
+<div class="form-container">
+    <div class="form-header">
+        <div class="form-icon">📝</div>
+        <h2 style="font-size: 2rem; color: var(--color-text); margin-bottom: 10px; font-weight: 700;">Add New Lead</h2>
+        <p class="form-subtitle">Create a new lead with client information</p>
+    </div>
+
+    <form method="post" novalidate id="leadForm">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="{{ form.existing_client.id_for_label }}">{{ form.existing_client.label }}</label>
+            {{ form.existing_client }}
+        </div>
+
+        <div id="new-client-section" class="new-client-section">
+            <div class="new-client-hint">
+                Fill these fields only if you do not select an existing client above
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                {{ form.name }}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                {{ form.email }}
+            </div>
+
+            <div class="form-group">
+                <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                {{ form.phone }}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.lead_info.id_for_label }}">{{ form.lead_info.label }}</label>
+            {{ form.lead_info }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+            {{ form.status }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.relationship_manager.id_for_label }}">{{ form.relationship_manager.label }}</label>
+            {{ form.relationship_manager }}
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+            <span>
+                <span>✅</span>
+                <span>Add Lead</span>
+            </span>
+        </button>
+    </form>
+
+    <a href="{% url 'leads_list' %}" class="back-link">Back to Leads List</a>
+</div>
+
+<script>
+    const existingClientSelect = document.getElementById('{{ form.existing_client.id_for_label }}');
+    const newClientSection = document.getElementById('new-client-section');
+    const leadForm = document.getElementById('leadForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function toggleNewClientFields() {
+        if (existingClientSelect.value) {
+            newClientSection.classList.add('hidden');
+        } else {
+            newClientSection.classList.remove('hidden');
+        }
+    }
+
+    existingClientSelect.addEventListener('change', toggleNewClientFields);
+
+    // Initialize form state on page load
+    toggleNewClientFields();
+
+    // Form submission handler
+    leadForm.addEventListener('submit', function() {
+        submitBtn.classList.add('loading');
+        submitBtn.querySelector('span span:last-child').textContent = 'Adding Lead...';
+        submitBtn.disabled = true;
+    });
+</script>
+{% endblock %}

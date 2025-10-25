@@ -1,0 +1,331 @@
+{% extends 'crm/base.html' %}
+
+{% block title %}Call Analytics{% endblock %}
+
+{% block content %}
+<style>
+    /* Page-specific overrides */
+    .analytics-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .analytics-header {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .analytics-header h2 {
+        color: white;
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+    }
+
+    .filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: var(--radius-md);
+        backdrop-filter: blur(10px);
+    }
+
+    .filter-group {
+        flex: 1 1 180px;
+    }
+
+    .filter-group label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        color: white;
+    }
+
+    .filter-group select,
+    .filter-group input[type="date"] {
+        width: 100%;
+        padding: 0.6rem;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    .filter-actions {
+        flex: 1 1 180px;
+        display: flex;
+        align-items: flex-end;
+        gap: 0.5rem;
+    }
+
+    .btn-filter {
+        padding: 0.6rem 1.25rem;
+        background: var(--color-success);
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-filter:hover {
+        background: #48bb78;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    }
+
+    .btn-reset {
+        padding: 0.6rem 1.25rem;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: var(--radius-sm);
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-block;
+    }
+
+    .btn-reset:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        padding: 1.5rem;
+        border-radius: var(--radius-lg);
+        color: white;
+        box-shadow: var(--shadow-md);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: rotate(45deg);
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .stat-label {
+        font-size: 0.95rem;
+        opacity: 0.95;
+        position: relative;
+        z-index: 1;
+    }
+
+    .bg-primary { background: linear-gradient(135deg, #007bff, #0056b3); }
+    .bg-success { background: linear-gradient(135deg, var(--color-success), #48bb78); }
+    .bg-info { background: linear-gradient(135deg, #17a2b8, #138496); }
+    .bg-warning { background: linear-gradient(135deg, #ffc107, #e0a800); }
+
+    .analytics-section {
+        background: var(--color-surface);
+        padding: 2rem;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--color-text);
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--color-border);
+    }
+
+    .progress-item {
+        margin-bottom: 1.5rem;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+
+    .progress-header strong {
+        color: var(--color-text);
+        font-weight: 600;
+    }
+
+    .progress-bar-container {
+        background: var(--color-border);
+        height: 12px;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+        height: 100%;
+        border-radius: 6px;
+        transition: width 0.6s ease;
+    }
+
+    @media (max-width: 768px) {
+        .filter-form {
+            flex-direction: column;
+        }
+
+        .filter-group,
+        .filter-actions {
+            flex: 1 1 100%;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+        }
+    }
+</style>
+
+<div class="analytics-container">
+    <div class="analytics-header">
+        <h2>📊 Call Performance Analytics</h2>
+
+        <form method="get" class="filter-form">
+            {% if user.is_superuser %}
+            <div class="filter-group">
+                <label>Relationship Manager:</label>
+                {{ filter_form.relationship_manager }}
+            </div>
+            {% endif %}
+            <div class="filter-group">
+                <label>Start Date:</label>
+                {{ filter_form.start_date }}
+            </div>
+            <div class="filter-group">
+                <label>End Date:</label>
+                {{ filter_form.end_date }}
+            </div>
+            <div class="filter-actions">
+                <button type="submit" class="btn-filter">🔍 Filter</button>
+                <a href="{% url 'calls_analytics' %}" class="btn-reset">↻ Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="stats-grid">
+        <div class="stat-card bg-primary">
+            <div class="stat-value">{{ analytics_data.total_calls }}</div>
+            <div class="stat-label">📞 Total Calls</div>
+        </div>
+        <div class="stat-card bg-success">
+            <div class="stat-value">{{ analytics_data.connected_calls }}</div>
+            <div class="stat-label">✅ Connected Calls</div>
+        </div>
+        <div class="stat-card bg-info">
+            <div class="stat-value">{{ analytics_data.avg_duration|floatformat:1 }}m</div>
+            <div class="stat-label">⏱️ Avg Duration</div>
+        </div>
+        <div class="stat-card bg-warning">
+            <div class="stat-value">{{ analytics_data.avg_connection_time|floatformat:0 }}s</div>
+            <div class="stat-label">⚡ Avg Connection Time</div>
+        </div>
+    </div>
+
+    <!-- RM Performance Table -->
+    <div class="analytics-section">
+        <h3 class="section-title">👥 RM Performance Overview</h3>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Relationship Manager</th>
+                        <th>Total Calls</th>
+                        <th>Connected</th>
+                        <th>Success Rate</th>
+                        <th>Avg Duration</th>
+                        <th>Avg Connection</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rm in rm_performance %}
+                    <tr>
+                        <td>{{ rm.relationship_manager__first_name }} {{ rm.relationship_manager__last_name }}</td>
+                        <td>{{ rm.total_calls }}</td>
+                        <td>{{ rm.connected_calls }}</td>
+                        <td>
+                            {% if rm.total_calls > 0 %}
+                                <span class="badge badge-success">{{ rm.success_rate|floatformat:0 }}%</span>
+                            {% else %}
+                                <span class="badge badge-secondary">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ rm.avg_duration|floatformat:1 }}m</td>
+                        <td>{{ rm.avg_connection_time|floatformat:0 }}s</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--color-text-secondary);">
+                            No performance data available
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Call Status Distribution -->
+    <div class="analytics-section">
+        <h3 class="section-title">📈 Call Status Distribution</h3>
+        {% for status in status_distribution %}
+        <div class="progress-item">
+            <div class="progress-header">
+                <strong>{{ status.call_status|title }}</strong>
+                <span style="color: var(--color-text-secondary);">{{ status.count }} calls</span>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: {% widthratio status.count analytics_data.total_calls 100 %}%;"></div>
+            </div>
+        </div>
+        {% empty %}
+        <p style="color: var(--color-text-secondary); text-align: center;">No status data available</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
