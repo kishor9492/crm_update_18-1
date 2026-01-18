@@ -198,21 +198,6 @@
                     <textarea name="answer_{{ item.question.id }}" rows="3"
                         placeholder="Enter your response...">{{ item.answer_text }}</textarea>
                 </div>
-
-                <div class="form-group">
-                    <label>Rating (1-5)</label>
-                    <div class="rating-group">
-                        {% for i in "12345" %}
-                        <div class="rating-option">
-                            <input type="radio" name="rating_{{ item.question.id }}"
-                                id="rating_{{ item.question.id }}_{{ forloop.counter }}" value="{{ forloop.counter }}"
-                                {% if item.rating==forloop.counter %} checked {% endif %}>
-                            <label for="rating_{{ item.question.id }}_{{ forloop.counter }}">{{ forloop.counter
-                                }}</label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
             </div>
             {% empty %}
             <p style="color: #888; text-align: center;">No questions have been added yet. Please contact HR.</p>
@@ -228,8 +213,7 @@
                 <div class="rating-group">
                     {% for i in "12345" %}
                     <div class="rating-option">
-                        <input type="radio" name="self_overall_rating" id="self_rating_{{ forloop.counter }}"
-                            value="{{ forloop.counter }}" {% if review.self_overall_rating==forloop.counter %} checked
+                        <input type="radio" name="self_overall_rating" id="self_rating_{{ forloop.counter }}" value="{{ forloop.counter }}" {% if review.self_overall_rating == forloop.counter %} checked
                             {% endif %}>
                         <label for="self_rating_{{ forloop.counter }}">{{ forloop.counter }}</label>
                     </div>
@@ -257,11 +241,8 @@
                 <div class="rating-group">
                     {% for i in "12345" %}
                     <div class="rating-option">
-                        <input type="radio" name="manager_rating" id="mgr_rating_{{ forloop.counter }}"
-                            value="{{ forloop.counter }}" {% if review.manager_rating_by_employee==forloop.counter %}
-                            checked {% endif %}>
-                        <label for="mgr_rating_{{ forloop.counter }}" style="border-color: #667eea;">{{ forloop.counter
-                            }}</label>
+                        <input type="radio" name="manager_rating" id="mgr_rating_{{ forloop.counter }}" value="{{ forloop.counter }}" {% if review.manager_rating_by_employee == forloop.counter %} checked {% endif %}>
+                        <label for="mgr_rating_{{ forloop.counter }}" style="border-color: #667eea;">{{ forloop.counter }}</label>
                     </div>
                     {% endfor %}
                 </div>

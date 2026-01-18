@@ -2238,11 +2238,21 @@ def appraisal_self_review(request, period_id):
         review.manager_rating_by_employee = request.POST.get('manager_rating', None)
         review.manager_comments_by_employee = request.POST.get('manager_comments', '')
         
-        # Check if submitting or saving draft
         if 'submit' in request.POST:
-            review.status = 'submitted'
-            review.self_submitted_at = timezone.now()
-            messages.success(request, 'Your self-review has been submitted successfully!')
+            # Validate all questions answered
+            all_answered = True
+            for questions_id in questions.values_list('id', flat=True):
+                 if not request.POST.get(f'answer_{questions_id}', '').strip():
+                     all_answered = False
+                     break
+            
+            if not all_answered:
+                messages.error(request, 'Please answer all questions before submitting.')
+                # Save as draft instead
+            else:
+                review.status = 'submitted'
+                review.self_submitted_at = timezone.now()
+                messages.success(request, 'Your self-review has been submitted successfully!')
         else:
             messages.success(request, 'Draft saved successfully!')
         
