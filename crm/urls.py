@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LoginView, LogoutView
 from .views import upload_clients, crm_dashboard
 
@@ -11,6 +12,11 @@ urlpatterns = [
         redirect_authenticated_user=True,
         next_page='home'
     ), name='login'),
+    
+    # Password Change URLs
+    path('password_change/', auth_views.PasswordChangeView.as_view(template_name='crm/password_change.html'), name='password_change'),
+    path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='crm/password_change_done.html'), name='password_change_done'),
+
     path('dashboard/', views.crm_dashboard, name='crm_dashboard'),
     path('logout/', views.custom_logout_view, name='logout'),
 
