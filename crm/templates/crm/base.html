@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     {% load static %}
+    {% load appraisal_filters %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM System</title>
@@ -106,19 +108,19 @@
             display: inline-block;
         }
 
-        .dropdown > a {
+        .dropdown>a {
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .dropdown > a::after {
+        .dropdown>a::after {
             content: '▾';
             font-size: 0.9rem;
             transition: transform 0.3s ease;
         }
 
-        .dropdown:hover > a::after {
+        .dropdown:hover>a::after {
             transform: rotate(180deg);
         }
 
@@ -155,6 +157,7 @@
                 opacity: 0;
                 transform: translateY(-10px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -289,6 +292,7 @@
         }
     </style>
 </head>
+
 <body>
     <nav class="navbar">
         <div class="logo">
@@ -304,8 +308,8 @@
                 <a href="#">Management</a>
                 <div class="dropdown-content">
                     {% if request.user.is_superuser %}
-                        <a href="{% url 'upload_clients' %}">Upload Clients</a>
-                        <a href="{% url 'bulk_rm_transfer' %}">Bulk RM Transfer</a>
+                    <a href="{% url 'upload_clients' %}">Upload Clients</a>
+                    <a href="{% url 'bulk_rm_transfer' %}">Bulk RM Transfer</a>
                     {% endif %}
                     <a href="{% url 'add_lead' %}">Add Lead</a>
                 </div>
@@ -318,8 +322,25 @@
                     <a href="{% url 'leads_list' %}">Leads</a>
                     <a href="{% url 'meetings_list' %}">Meetings</a>
                     <a href="{% url 'sales_list' %}">Sales</a>
+                    <a href="{% url 'redemptions_list' %}">Redemptions</a>
                 </div>
             </div>
+
+            <div class="dropdown">
+                <a href="#">HR</a>
+                <div class="dropdown-content">
+                    <a href="{% url 'appraisal_list' %}">360° Appraisal</a>
+                    {% if request.user.is_superuser or request.user|has_group:"HR All Access" %}
+                    <a href="{% url 'appraisal_admin_view' %}">Appraisal Admin</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Backup Button for Admin -->
+            {% if request.user.is_superuser %}
+            <a href="{% url 'download_db' %}" class="btn-auth" style="border-color: #f1c40f; color: #f1c40f;">Backup
+                DB</a>
+            {% endif %}
 
             <a href="{% url 'crm_dashboard' %}" class="btn-dashboard">Dashboard</a>
             <a href="{% url 'login' %}" class="btn-auth">Login</a>
@@ -336,4 +357,5 @@
         {% endblock %}
     </main>
 </body>
+
 </html>

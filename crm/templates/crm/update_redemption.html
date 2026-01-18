@@ -1,0 +1,119 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 1rem;
+        box-sizing: border-box;
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #667eea;
+        text-decoration: none;
+    }
+</style>
+
+<div class="form-container">
+    <a href="{% url 'redemptions_list' %}" class="back-link">← Back to Redemptions</a>
+
+    <div class="form-header">
+        <h2>✏️ Update Redemption</h2>
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label>Client</label>
+            <input type="text" value="{{ redemption.client.name }}" disabled>
+        </div>
+
+        <div class="form-group">
+            <label for="product">Product *</label>
+            <select name="product" id="product" required>
+                {% for code, name in product_choices %}
+                <option value="{{ code }}" {% if redemption.product==code %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="redemption_type">Redemption Type *</label>
+            <select name="redemption_type" id="redemption_type" required>
+                {% for code, name in redemption_type_choices %}
+                <option value="{{ code }}" {% if redemption.redemption_type==code %}selected{% endif %}>{{ name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="fund_name">Fund Name (Optional)</label>
+            <input type="text" name="fund_name" id="fund_name" value="{{ redemption.fund_name|default:'' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="amount">Amount (₹) *</label>
+            <input type="number" name="amount" id="amount" step="0.01" required value="{{ redemption.amount }}">
+        </div>
+
+        <div class="form-group">
+            <label for="redemption_date">Redemption Date *</label>
+            <input type="date" name="redemption_date" id="redemption_date" required
+                value="{{ redemption.redemption_date|date:'Y-m-d' }}">
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea name="notes" id="notes" rows="3">{{ redemption.notes }}</textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">Update Redemption</button>
+    </form>
+</div>
+{% endblock %}

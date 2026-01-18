@@ -1,0 +1,286 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+
+    .section-card {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        color: #333;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #11998e;
+    }
+
+    .question-block {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .question-text {
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #333;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #555;
+    }
+
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 1rem;
+        box-sizing: border-box;
+        resize: vertical;
+    }
+
+    .rating-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .rating-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .rating-option input[type="radio"] {
+        display: none;
+    }
+
+    .rating-option label {
+        width: 45px;
+        height: 45px;
+        border: 2px solid #ddd;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .rating-option input[type="radio"]:checked+label {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        border-color: #11998e;
+        color: white;
+    }
+
+    .rating-option label:hover {
+        border-color: #11998e;
+    }
+
+    .manager-section {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        border-left: 4px solid #667eea;
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .btn-save {
+        padding: 14px 30px;
+        background: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+
+    .btn-submit {
+        padding: 14px 30px;
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .back-link {
+        .page-header {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white !important;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-header h2,
+        .page-header p {
+            color: white !important;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #11998e;
+            text-decoration: none;
+            background: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .back-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+            color: #38ef7d;
+        }
+</style>
+
+<div class="form-container">
+    <div class="page-header">
+        <a href="{% url 'appraisal_list' %}" class="back-link">← Back to Appraisals</a>
+        <h2>📝 Self Review - {{ period.name }}</h2>
+        <p>Complete your self-assessment for this period</p>
+        {% if manager %}
+        <p style="opacity: 0.9; margin-top: 10px;">Your Manager: {{ manager.get_full_name }}</p>
+        {% endif %}
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <!-- Self Assessment Questions -->
+        <div class="section-card">
+            <h3 class="section-title">📋 Self Assessment Questions</h3>
+
+            {% for item in questions_with_answers %}
+            <div class="question-block">
+                <div class="question-text">{{ forloop.counter }}. {{ item.question.question_text }}</div>
+
+                <div class="form-group">
+                    <label>Your Answer</label>
+                    <textarea name="answer_{{ item.question.id }}" rows="3"
+                        placeholder="Enter your response...">{{ item.answer_text }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Rating (1-5)</label>
+                    <div class="rating-group">
+                        {% for i in "12345" %}
+                        <div class="rating-option">
+                            <input type="radio" name="rating_{{ item.question.id }}"
+                                id="rating_{{ item.question.id }}_{{ forloop.counter }}" value="{{ forloop.counter }}"
+                                {% if item.rating==forloop.counter %} checked {% endif %}>
+                            <label for="rating_{{ item.question.id }}_{{ forloop.counter }}">{{ forloop.counter
+                                }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p style="color: #888; text-align: center;">No questions have been added yet. Please contact HR.</p>
+            {% endfor %}
+        </div>
+
+        <!-- Overall Self Rating -->
+        <div class="section-card">
+            <h3 class="section-title">⭐ Overall Self Rating</h3>
+
+            <div class="form-group">
+                <label>How would you rate your overall performance this period?</label>
+                <div class="rating-group">
+                    {% for i in "12345" %}
+                    <div class="rating-option">
+                        <input type="radio" name="self_overall_rating" id="self_rating_{{ forloop.counter }}"
+                            value="{{ forloop.counter }}" {% if review.self_overall_rating==forloop.counter %} checked
+                            {% endif %}>
+                        <label for="self_rating_{{ forloop.counter }}">{{ forloop.counter }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Additional Comments</label>
+                <textarea name="self_comments" rows="4"
+                    placeholder="Any additional comments about your performance...">{{ review.self_comments }}</textarea>
+            </div>
+        </div>
+
+        <!-- Rating for Manager -->
+        {% if manager %}
+        <div class="section-card manager-section">
+            <h3 class="section-title" style="border-color: #667eea;">👤 Feedback for Your Manager</h3>
+            <p style="color: #666; margin-bottom: 20px;">
+                <em>This feedback is confidential and will only be visible to HR/Admin, not to your manager.</em>
+            </p>
+
+            <div class="form-group">
+                <label>Rate your manager's support and guidance</label>
+                <div class="rating-group">
+                    {% for i in "12345" %}
+                    <div class="rating-option">
+                        <input type="radio" name="manager_rating" id="mgr_rating_{{ forloop.counter }}"
+                            value="{{ forloop.counter }}" {% if review.manager_rating_by_employee==forloop.counter %}
+                            checked {% endif %}>
+                        <label for="mgr_rating_{{ forloop.counter }}" style="border-color: #667eea;">{{ forloop.counter
+                            }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Comments for your manager (Confidential)</label>
+                <textarea name="manager_comments" rows="4"
+                    placeholder="Share your feedback about your manager...">{{ review.manager_comments_by_employee }}</textarea>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="btn-group">
+            <button type="submit" name="save_draft" class="btn-save">💾 Save Draft</button>
+            <button type="submit" name="submit" class="btn-submit">
+                {% if review.status == 'submitted' %}🔄 Update Review{% else %}✅ Submit Review{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

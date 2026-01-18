@@ -138,6 +138,21 @@
             grid-template-columns: 1fr;
         }
     }
+    .modern-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #4e73df, #224abe);
+    border: none;
+    padding: 12px 16px;
+    font-size: 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.modern-btn:hover {
+    background: linear-gradient(135deg, #5a82ff, #2a5bff);
+    transform: translateY(-2px);
+}
 </style>
 
 <div style="max-width: 1400px; margin: 0 auto;">
@@ -194,7 +209,8 @@
             </div>
 
             <div class="form-group" style="display: flex; align-items: flex-end;">
-                <button type="submit" class="btn btn-primary" style="width: 100%;">🔎 Filter</button>
+                <button type="submit" class="btn btn-primary modern-btn" style="width: 100%;">🔎 Filter</button>
+                <a href="{% url 'sales_list' %}" class="btn btn-secondary">↻ Clear</a>
             </div>
         </form>
     </div>
@@ -222,7 +238,7 @@
                         <td>{{ sale.relationship_manager.get_full_name }}</td>
                         <td>{{ sale.get_product_display }}</td>
                         <td>{{ sale.fund_name|default:"-" }}</td>
-                        <td style="font-weight: 700; color: var(--color-success);">₹{{ sale.amount|floatformat:2 }}</td>
+                        <td style="font-weight: 700; color: var(--color-success);">₹{{ sale.amount|floatformat:0 }}</td>
                         <td>{{ sale.sale_date|date:"M d, Y" }}</td>
                         <td>
                             {% if sale.client.sourced_by %}

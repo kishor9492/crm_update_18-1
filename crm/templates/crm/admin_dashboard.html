@@ -104,7 +104,9 @@
     }
 
     @keyframes spin {
-        to { transform: rotate(360deg); }
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     /* Total Row Styling */
@@ -132,6 +134,30 @@
         .stats-grid {
             grid-template-columns: 1fr;
         }
+
+        .chart-container,
+        .card {
+            min-width: 0 !important;
+            width: 100% !important;
+        }
+    }
+
+    .chart-container {
+        background: var(--color-surface);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-md);
+        padding: 25px;
+        min-width: 0;
+        /* <- Allow shrinking */
+        width: 100%;
+    }
+
+    .chart-container canvas {
+        width: 100% !important;
+        height: auto !important;
+        display: block;
+        max-width: 100%;
+        min-width: 0;
     }
 </style>
 
@@ -151,9 +177,9 @@
                 <select name="relationship_manager_id" id="relationship_manager">
                     <option value="">All Managers</option>
                     {% for manager in relationship_managers %}
-                        <option value="{{ manager.id }}" {% if manager.id|stringformat:"s" == selected_manager_id %}selected{% endif %}>
-                            {{ manager.first_name }} {{ manager.last_name }}
-                        </option>
+                    <option value="{{ manager.id }}" {% if manager.id|stringformat:"s" == selected_manager_id %}selected{% endif %}>
+                        {{ manager.first_name }} {{ manager.last_name }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -181,8 +207,10 @@
 
     <!-- Product-wise Sales Table -->
     <div class="card">
-        <h3 class="card-title" style="font-size: 1.3rem; font-weight: 700; color: var(--color-text); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; padding-bottom: 15px; border-bottom: 3px solid rgba(75, 193, 193, 0.1);">
-            <span style="width: 4px; height: 24px; background: linear-gradient(135deg, var(--color-primary), #667eea); border-radius: 2px;"></span>
+        <h3 class="card-title"
+            style="font-size: 1.3rem; font-weight: 700; color: var(--color-text); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; padding-bottom: 15px; border-bottom: 3px solid rgba(75, 193, 193, 0.1);">
+            <span
+                style="width: 4px; height: 24px; background: linear-gradient(135deg, var(--color-primary), #667eea); border-radius: 2px;"></span>
             📈 Product-wise Sales by Relationship Manager
         </h3>
         <div class="table-container">
@@ -219,8 +247,10 @@
     <div id="bdmSection" style="display: none;">
         <!-- BDM Performance Table -->
         <div class="card">
-            <h3 class="card-title" style="font-size: 1.3rem; font-weight: 700; color: var(--color-text); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; padding-bottom: 15px; border-bottom: 3px solid rgba(75, 193, 193, 0.1);">
-                <span style="width: 4px; height: 24px; background: linear-gradient(135deg, var(--color-primary), #667eea); border-radius: 2px;"></span>
+            <h3 class="card-title"
+                style="font-size: 1.3rem; font-weight: 700; color: var(--color-text); margin-bottom: 20px; display: flex; align-items: center; gap: 12px; padding-bottom: 15px; border-bottom: 3px solid rgba(75, 193, 193, 0.1);">
+                <span
+                    style="width: 4px; height: 24px; background: linear-gradient(135deg, var(--color-primary), #667eea); border-radius: 2px;"></span>
                 🎯 BDM Performance Overview
             </h3>
             <div class="table-container">
@@ -280,33 +310,36 @@
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
-    .then(data => {
-        const salesData = data.sales_data || [];
-        const meetingsSummary = data.meetings_data.summary || [];
-        const productSales = data.product_sales_per_manager || [];
-        const bdmData = data.bdm_performance || [];
+        .then(response => response.json())
+        .then(data => {
+            const salesData = data.sales_data || [];
+            const meetingsSummary = data.meetings_data.summary || [];
+            const productSales = data.product_sales_per_manager || [];
+            const productRedemptions = data.product_redemptions_per_manager || [];
+            const bdmData = data.bdm_performance || [];
 
-        renderStats(meetingsSummary, productSales);
-        renderSalesTable(productSales, meetingsSummary);
-        renderMeetingsChart(meetingsSummary);
-        renderSalesChart(salesData);
+            renderStats(meetingsSummary, productSales, productRedemptions);
+            renderSalesTable(productSales, meetingsSummary, productRedemptions);
+            renderMeetingsChart(meetingsSummary);
+            renderSalesChart(salesData);
 
-        if (bdmData.length > 0) {
-            document.getElementById('bdmSection').style.display = 'block';
-            renderBDMTable(bdmData);
-            renderBDMChart(bdmData);
-        }
-    })
-    .catch(error => {
-        console.error('Error fetching dashboard data:', error);
-        document.querySelector('#salesTable tbody').innerHTML = '<tr><td colspan="2" style="text-align: center; color: #e53e3e; padding: 30px;">Error loading data. Please try again.</td></tr>';
-    });
+            if (bdmData.length > 0) {
+                document.getElementById('bdmSection').style.display = 'block';
+                renderBDMTable(bdmData);
+                renderBDMChart(bdmData);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching dashboard data:', error);
+            document.querySelector('#salesTable tbody').innerHTML = '<tr><td colspan="2" style="text-align: center; color: #e53e3e; padding: 30px;">Error loading data. Please try again.</td></tr>';
+        });
 
-    function renderStats(meetingsSummary, productSales) {
+    function renderStats(meetingsSummary, productSales, productRedemptions) {
         const statsGrid = document.getElementById('statsGrid');
         const totalMeetings = meetingsSummary.reduce((sum, item) => sum + (item.total_meetings || 0), 0);
         const totalSales = productSales.reduce((sum, item) => sum + Number(item.total_sales || 0), 0);
+        const totalRedemptions = productRedemptions.reduce((sum, item) => sum + Number(item.total_redemptions || 0), 0);
+        const netSales = totalSales - totalRedemptions;
         const totalManagers = meetingsSummary.length;
         const avgMeetings = totalManagers ? Math.round(totalMeetings / totalManagers) : 0;
 
@@ -316,8 +349,16 @@
                 <div class="stat-value">${totalMeetings.toLocaleString()}</div>
             </div>
             <div class="stat-card" style="border-left-color: #667eea;">
-                <div class="stat-label">Total Sales</div>
-                <div class="stat-value" style="color: #667eea;">₹${totalSales.toLocaleString()}</div>
+                <div class="stat-label">Gross Sales</div>
+                <div class="stat-value" style="color: #667eea;">₹${Math.floor(totalSales).toLocaleString()}</div>
+            </div>
+            <div class="stat-card" style="border-left-color: #dc3545;">
+                <div class="stat-label">Redemptions</div>
+                <div class="stat-value" style="color: #dc3545;">₹${Math.floor(totalRedemptions).toLocaleString()}</div>
+            </div>
+            <div class="stat-card" style="border-left-color: #28a745;">
+                <div class="stat-label">Net Sales</div>
+                <div class="stat-value" style="color: #28a745;">₹${Math.floor(netSales).toLocaleString()}</div>
             </div>
             <div class="stat-card" style="border-left-color: #48bb78;">
                 <div class="stat-label">Active Managers</div>
@@ -330,41 +371,69 @@
         `;
     }
 
-    function renderSalesTable(productSales, meetingsSummary) {
+    function renderSalesTable(productSales, meetingsSummary, productRedemptions) {
         const tableBody = document.querySelector('#salesTable tbody');
         const tableHead = document.querySelector('#salesTable thead tr');
         tableBody.innerHTML = '';
 
         const productSet = new Set();
         productSales.forEach(item => productSet.add(item.product));
+        productRedemptions.forEach(item => productSet.add(item.product));
         const products = Array.from(productSet).sort();
 
         let headerRow = '<th>Manager</th><th>Meetings</th>';
-        products.forEach(product => headerRow += `<th>${product}</th>`);
+        products.forEach(product => headerRow += `<th>${product}<br><small>(Net)</small></th>`);
         tableHead.innerHTML = headerRow;
 
         const managers = {};
         const totals = {};
+        const redemptionTotals = {};
         let totalMeetings = 0;
-        products.forEach(p => totals[p] = 0);
+        products.forEach(p => { totals[p] = 0; redemptionTotals[p] = 0; });
 
+        // Track manager IDs from product sales
         productSales.forEach(item => {
             const name = `${item.relationship_manager__first_name} ${item.relationship_manager__last_name}`;
-            if (!managers[name]) managers[name] = { sales: {}, meetings: 0 };
-            managers[name].sales[item.product] = (managers[name].sales[item.product] || 0) + Number(item.total_sales);
+            if (!managers[name]) managers[name] = { sales: {}, redemptions: {}, meetings: 0, id: item.relationship_manager__id };
+            managers[name].sales[item.product] = (managers[name].sales[item.product] || 0) + Number(Math.floor(item.total_sales));
+            if (item.relationship_manager__id) managers[name].id = item.relationship_manager__id;
         });
 
+        // Track redemptions per manager
+        productRedemptions.forEach(item => {
+            const name = `${item.relationship_manager__first_name} ${item.relationship_manager__last_name}`;
+            if (!managers[name]) managers[name] = { sales: {}, redemptions: {}, meetings: 0, id: item.relationship_manager__id };
+            managers[name].redemptions[item.product] = (managers[name].redemptions[item.product] || 0) + Number(Math.floor(item.total_redemptions));
+            if (item.relationship_manager__id) managers[name].id = item.relationship_manager__id;
+        });
+
+        // Track manager IDs from meetings summary
         meetingsSummary.forEach(item => {
             const name = `${item.relationship_manager__first_name} ${item.relationship_manager__last_name}`;
-            if (!managers[name]) managers[name] = { sales: {}, meetings: 0 };
+            if (!managers[name]) managers[name] = { sales: {}, redemptions: {}, meetings: 0, id: item.relationship_manager__id };
             managers[name].meetings = item.total_meetings;
+            if (item.relationship_manager__id) managers[name].id = item.relationship_manager__id;
         });
 
         for (const [manager, data] of Object.entries(managers)) {
             const row = document.createElement('tr');
             const nameCell = document.createElement('td');
-            nameCell.textContent = manager;
-            nameCell.style.fontWeight = '600';
+
+            // Create clickable link for RM name
+            if (data.id) {
+                const link = document.createElement('a');
+                link.href = `/rm-performance/${data.id}/`;
+                link.textContent = manager;
+                link.style.color = 'var(--color-primary)';
+                link.style.fontWeight = '600';
+                link.style.textDecoration = 'none';
+                link.addEventListener('mouseover', () => link.style.textDecoration = 'underline');
+                link.addEventListener('mouseout', () => link.style.textDecoration = 'none');
+                nameCell.appendChild(link);
+            } else {
+                nameCell.textContent = manager;
+                nameCell.style.fontWeight = '600';
+            }
             row.appendChild(nameCell);
 
             const meetingCell = document.createElement('td');
@@ -374,9 +443,15 @@
 
             products.forEach(product => {
                 const sales = data.sales[product] || 0;
+                const redemptions = data.redemptions[product] || 0;
+                const netSales = sales - redemptions;
                 totals[product] += sales;
+                redemptionTotals[product] += redemptions;
                 const cell = document.createElement('td');
-                cell.textContent = '₹' + sales.toLocaleString();
+                cell.innerHTML = `<span style="color: ${netSales >= 0 ? '#28a745' : '#dc3545'}">₹${netSales.toLocaleString()}</span>`;
+                if (redemptions > 0) {
+                    cell.innerHTML += `<br><small style="color: #888;">(${sales.toLocaleString()} - ${redemptions.toLocaleString()})</small>`;
+                }
                 row.appendChild(cell);
             });
 
@@ -384,6 +459,8 @@
         }
 
         const totalRow = document.createElement('tr');
+        totalRow.style.fontWeight = 'bold';
+        totalRow.style.backgroundColor = '#f8f9fa';
         const totalLabelCell = document.createElement('td');
         totalLabelCell.textContent = 'TOTAL';
         totalRow.appendChild(totalLabelCell);
@@ -393,8 +470,12 @@
         totalRow.appendChild(totalMeetingCell);
 
         products.forEach(product => {
+            const netTotal = totals[product] - redemptionTotals[product];
             const totalsCell = document.createElement('td');
-            totalsCell.textContent = '₹' + totals[product].toLocaleString();
+            totalsCell.innerHTML = `<span style="color: ${netTotal >= 0 ? '#28a745' : '#dc3545'}">₹${netTotal.toLocaleString()}</span>`;
+            if (redemptionTotals[product] > 0) {
+                totalsCell.innerHTML += `<br><small>(${totals[product].toLocaleString()} - ${redemptionTotals[product].toLocaleString()})</small>`;
+            }
             totalRow.appendChild(totalsCell);
         });
 
@@ -496,8 +577,22 @@
         bdmData.forEach(bdm => {
             const row = document.createElement('tr');
             const nameCell = document.createElement('td');
-            nameCell.textContent = bdm.name;
-            nameCell.style.fontWeight = '600';
+
+            // Create clickable link for BDM name
+            if (bdm.id) {
+                const link = document.createElement('a');
+                link.href = `/bdm-performance/${bdm.id}/`;
+                link.textContent = bdm.name;
+                link.style.color = 'var(--color-primary)';
+                link.style.fontWeight = '600';
+                link.style.textDecoration = 'none';
+                link.addEventListener('mouseover', () => link.style.textDecoration = 'underline');
+                link.addEventListener('mouseout', () => link.style.textDecoration = 'none');
+                nameCell.appendChild(link);
+            } else {
+                nameCell.textContent = bdm.name;
+                nameCell.style.fontWeight = '600';
+            }
             row.appendChild(nameCell);
 
             ['open_leads', 'closed_leads'].forEach(key => {

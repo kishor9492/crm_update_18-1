@@ -258,18 +258,21 @@
         </div>
     </div>
 
+    <!-- Pagination -->
     <div class="pagination">
         {% if page_obj.has_previous %}
-            <a href="?page=1{{ request.GET.urlencode|cut:'page='|yesno:':&' }}{{ request.GET.urlencode|cut:'page=' }}" >First</a>
-            <a href="?page={{ page_obj.previous_page_number }}{{ request.GET.urlencode|cut:'page='|yesno:':&' }}{{ request.GET.urlencode|cut:'page=' }}">Previous</a>
+            <a href="?page=1{% if filter_remark %}&remark={{ filter_remark }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
         {% else %}
             <span class="disabled">First</span>
             <span class="disabled">Previous</span>
         {% endif %}
+
         <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
         {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{{ request.GET.urlencode|cut:'page='|yesno:':&' }}{{ request.GET.urlencode|cut:'page=' }}">Next</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}{{ request.GET.urlencode|cut:'page='|yesno:':&' }}{{ request.GET.urlencode|cut:'page=' }}">Last</a>
+            <a href="?page={{ page_obj.next_page_number }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if filter_remark %}&remark={{ filter_remark }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
         {% else %}
             <span class="disabled">Next</span>
             <span class="disabled">Last</span>

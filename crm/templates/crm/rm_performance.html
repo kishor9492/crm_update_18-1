@@ -1,0 +1,472 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+  .rm-header {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    color: white;
+    padding: 30px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+  
+  .rm-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 2rem;
+  }
+  
+  .rm-header p {
+    margin: 0;
+    opacity: 0.9;
+  }
+  
+  .back-link {
+    display: inline-block;
+    color: white;
+    background: rgba(255,255,255,0.2);
+    padding: 8px 16px;
+    border-radius: 5px;
+    text-decoration: none;
+    margin-bottom: 15px;
+    transition: background 0.3s;
+  }
+  
+  .back-link:hover {
+    background: rgba(255,255,255,0.3);
+  }
+  
+  .filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .filter-form label {
+    font-weight: 600;
+    margin-right: 5px;
+  }
+  
+  .filter-form select,
+  .filter-form input[type="date"] {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    min-width: 160px;
+  }
+  
+  .filter-form button {
+    padding: 10px 25px;
+    background: #4bc1c1;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  
+  .filter-form button:hover {
+    background: #3a9a9a;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+  
+  .stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+  }
+  
+  .stat-card.primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+  }
+  
+  .stat-card.success {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+  }
+  
+  .stat-card.info {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+  }
+  
+  .stat-card.warning {
+    background: linear-gradient(135deg, #fa709a, #fee140);
+    color: white;
+  }
+  
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  
+  .stat-label {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.9;
+  }
+  
+  .section-title {
+    font-size: 1.5rem;
+    margin: 40px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #4bc1c1;
+    display: inline-block;
+  }
+  
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+  }
+  
+  .data-table thead {
+    background: #4bc1c1;
+    color: white;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .data-table tbody tr:hover {
+    background: #f8f9fa;
+  }
+  
+  .chart-container {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+  }
+  
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+  }
+  
+  .recent-activity {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+  }
+  
+  .activity-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+  
+  .activity-date {
+    color: #888;
+    font-size: 0.9rem;
+  }
+  
+  .product-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  
+  .badge-sip { background: #e3f2fd; color: #1976d2; }
+  .badge-lump { background: #f3e5f5; color: #7b1fa2; }
+  .badge-hi { background: #e8f5e9; color: #388e3c; }
+  .badge-ti { background: #fff3e0; color: #f57c00; }
+  .badge-pms { background: #fce4ec; color: #c2185b; }
+  .badge-aif { background: #e1f5fe; color: #0288d1; }
+  
+  @media (max-width: 768px) {
+    .filter-form {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .chart-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="rm-header">
+  <a href="{% url 'crm_dashboard' %}" class="back-link">← Back to Dashboard</a>
+  <h2>{{ rm_user.get_full_name }}</h2>
+  <p>Performance Dashboard | {{ rm_user.email }}</p>
+</div>
+
+<!-- Filters -->
+<form method="GET" class="filter-form">
+  <div>
+    <label for="month">Month:</label>
+    <select name="month" id="month">
+      <option value="">All Time</option>
+      {% for option in month_options %}
+        <option value="{{ option.value }}" {% if month == option.value %}selected{% endif %}>
+          {{ option.label }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  
+  <div>
+    <label for="start_date">Start Date:</label>
+    <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
+  </div>
+  
+  <div>
+    <label for="end_date">End Date:</label>
+    <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
+  </div>
+  
+  <button type="submit">Apply Filters</button>
+  <a href="{% url 'rm_performance' rm_user.id %}" style="padding: 10px 20px; background: #e0e0e0; border-radius: 6px; text-decoration: none; color: #333;">Reset</a>
+</form>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+  <div class="stat-card primary">
+    <div class="stat-value">{{ total_clients }}</div>
+    <div class="stat-label">Total Clients</div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-value">₹{{ total_sales_amount|floatformat:0 }}</div>
+    <div class="stat-label">Total Sales</div>
+  </div>
+  <div class="stat-card info">
+    <div class="stat-value">{{ total_meetings }}</div>
+    <div class="stat-label">Total Meetings</div>
+  </div>
+  <div class="stat-card warning">
+    <div class="stat-value">{{ total_calls }}</div>
+    <div class="stat-label">Total Calls</div>
+  </div>
+  <div class="stat-card" style="background: linear-gradient(135deg, #a8edea, #fed6e3);">
+    <div class="stat-value">{{ total_leads }}</div>
+    <div class="stat-label">Total Leads</div>
+  </div>
+</div>
+
+<!-- Sub Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value" style="color: #28a745;">{{ completed_meetings }}</div>
+    <div class="stat-label">Completed Meetings</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color: #ffc107;">{{ pending_meetings }}</div>
+    <div class="stat-label">Pending Meetings</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color: #17a2b8;">{{ connected_calls }}</div>
+    <div class="stat-label">Connected Calls</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color: #28a745;">{{ closed_leads }}</div>
+    <div class="stat-label">Closed Leads</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color: #dc3545;">{{ open_leads }}</div>
+    <div class="stat-label">Open Leads</div>
+  </div>
+</div>
+
+<!-- Product-wise Sales -->
+<h3 class="section-title">Product-wise Sales Breakdown</h3>
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th>Number of Sales</th>
+      <th>Total Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for sale in product_sales %}
+    <tr>
+      <td>
+        <span class="product-badge badge-{{ sale.product|lower }}">
+          {% for code, name in product_choices %}
+            {% if code == sale.product %}{{ name }}{% endif %}
+          {% endfor %}
+        </span>
+      </td>
+      <td>{{ sale.count }}</td>
+      <td>₹{{ sale.total_amount|floatformat:0 }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="3" style="text-align: center; color: #888;">No sales data available</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Charts -->
+<div class="chart-grid">
+  <div class="chart-container">
+    <h4 style="margin-top: 0;">Meeting Status</h4>
+    <canvas id="meetingStatusChart"></canvas>
+  </div>
+  <div class="chart-container">
+    <h4 style="margin-top: 0;">Call Status Breakdown</h4>
+    <canvas id="callStatusChart"></canvas>
+  </div>
+</div>
+
+<!-- Recent Activities -->
+<h3 class="section-title">Recent Sales</h3>
+<div class="recent-activity">
+  {% for sale in recent_sales %}
+  <div class="activity-item">
+    <div>
+      <strong>{{ sale.client.name }}</strong> - 
+      <span class="product-badge badge-{{ sale.product|lower }}">{{ sale.product }}</span>
+      - ₹{{ sale.amount|floatformat:0 }}
+    </div>
+    <span class="activity-date">{{ sale.sale_date|date:"M d, Y" }}</span>
+  </div>
+  {% empty %}
+  <p style="text-align: center; color: #888;">No recent sales</p>
+  {% endfor %}
+</div>
+
+<h3 class="section-title">Recent Meetings</h3>
+<div class="recent-activity">
+  {% for meeting in recent_meetings %}
+  <div class="activity-item">
+    <div>
+      <strong>{{ meeting.client.name }}</strong> - {{ meeting.notes|truncatewords:10 }}
+    </div>
+    <span class="activity-date">{{ meeting.date|date:"M d, Y" }} | {{ meeting.remark }}</span>
+  </div>
+  {% empty %}
+  <p style="text-align: center; color: #888;">No recent meetings</p>
+  {% endfor %}
+</div>
+
+<h3 class="section-title">Recent Calls</h3>
+<div class="recent-activity">
+  {% for call in recent_calls %}
+  <div class="activity-item">
+    <div>
+      <strong>{{ call.client.name }}</strong> - {{ call.call_purpose }} ({{ call.call_status }})
+    </div>
+    <span class="activity-date">{{ call.call_start_time|date:"M d, Y H:i" }}</span>
+  </div>
+  {% empty %}
+  <p style="text-align: center; color: #888;">No recent calls</p>
+  {% endfor %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Meeting Status Pie Chart
+  const meetingStatusCtx = document.getElementById('meetingStatusChart').getContext('2d');
+  const meetingData = [
+    {% for status in meeting_status %}
+    { label: '{{ status.remark }}', value: {{ status.count }} },
+    {% endfor %}
+  ];
+  
+  if (meetingData.length > 0) {
+    new Chart(meetingStatusCtx, {
+      type: 'doughnut',
+      data: {
+        labels: meetingData.map(d => d.label),
+        datasets: [{
+          data: meetingData.map(d => d.value),
+          backgroundColor: ['#28a745', '#ffc107', '#dc3545', '#17a2b8'],
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
+  
+  // Call Status Bar Chart
+  const callStatusCtx = document.getElementById('callStatusChart').getContext('2d');
+  const callData = [
+    {% for status in call_status_breakdown %}
+    { label: '{{ status.call_status }}', value: {{ status.count }} },
+    {% endfor %}
+  ];
+  
+  if (callData.length > 0) {
+    new Chart(callStatusCtx, {
+      type: 'bar',
+      data: {
+        labels: callData.map(d => d.label.charAt(0).toUpperCase() + d.label.slice(1).replace('_', ' ')),
+        datasets: [{
+          label: 'Calls',
+          data: callData.map(d => d.value),
+          backgroundColor: ['#4bc1c1', '#667eea', '#fa709a', '#38ef7d', '#fed6e3'],
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+  
+  // Clear month when dates are manually entered
+  document.getElementById('start_date').addEventListener('change', function() {
+    document.getElementById('month').value = '';
+  });
+  document.getElementById('end_date').addEventListener('change', function() {
+    document.getElementById('month').value = '';
+  });
+</script>
+{% endblock %}

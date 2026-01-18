@@ -1,0 +1,329 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #2c3e50, #3498db);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+
+    .filter-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .data-table thead {
+        background: linear-gradient(135deg, #2c3e50, #3498db);
+        color: white;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-not_started {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-draft {
+        background: #e0e0e0;
+        color: #666;
+    }
+
+    .status-submitted {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-manager_reviewed {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .status-completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .rating-display {
+        color: #ffc107;
+    }
+
+    .btn-action {
+        padding: 6px 14px;
+        border-radius: 5px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-disabled {
+        background: #ccc;
+        color: #666;
+        cursor: not-allowed;
+    }
+
+    .employee-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .employee-link:hover {
+        text-decoration: underline;
+    }
+
+    .confidential-badge {
+        background: #dc3545;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        margin-left: 5px;
+    }
+
+    .employee-type {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        margin-left: 5px;
+    }
+
+    .type-rm {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .type-bdm {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .type-manager {
+        background: #fff3e0;
+        color: #e65100;
+    }
+
+    .type-hr {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .stats-summary {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .stat-item {
+        background: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+    }
+</style>
+
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h2 style="margin-top: 0;">🔧 Admin - All Employee Appraisals</h2>
+        <p style="margin-bottom: 0;">View and manage all employee appraisals{% if selected_period_obj %} for {{ selected_period_obj.name }}{% endif %}</p>
+    </div>
+    <a href="{% url 'download_db' %}"
+        style="background: rgba(255,255,255,0.2); color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.4); hover: {background: rgba(255,255,255,0.3);}">
+        💾 Backup DB
+    </a>
+</div>
+
+<div class="filter-card">
+    <form method="GET" style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+        <select name="year" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; min-width: 100px;">
+            <option value="">All Years</option>
+            {% for year in years %}
+            <option value="{{ year }}" {% if selected_year == year|stringformat:"s" %} selected {% endif %}>{{ year }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <select name="period" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; min-width: 150px;">
+            <option value="">Select Period</option>
+            {% for period in periods %}
+            <option value="{{ period.id }}" {% if selected_period == period.id|stringformat:"s" %}selected{% endif %}>
+                {{ period.name }} {% if period.is_active %}(Active){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+
+        <select name="status" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            <option value="">All Status</option>
+            {% for code, name in status_choices %}
+            <option value="{{ code }}" {% if selected_status == code %} selected {% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit"
+            style="padding: 10px 25px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Filter
+        </button>
+        <a href="{% url 'appraisal_admin_view' %}"
+            style="padding: 10px 20px; background: #e0e0e0; border-radius: 5px; text-decoration: none; color: #333;">
+            Reset
+        </a>
+    </form>
+</div>
+
+<!-- Stats Summary -->
+{% if selected_period_obj %}
+<div class="stats-summary">
+    {% with total=employee_data|length %}
+    {% with not_started=employee_data|dictsort:"status"|length %}
+    <div class="stat-item">
+        <div class="stat-number">{{ total }}</div>
+        <div class="stat-label">Total Employees</div>
+    </div>
+    {% endwith %}
+    {% endwith %}
+</div>
+{% endif %}
+
+<div class="card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Employee</th>
+                <th>Type</th>
+                <th>Manager</th>
+                <th>Status</th>
+                <th>Self Rating</th>
+                <th>Manager Rating (by Emp) <span class="confidential-badge">Confidential</span></th>
+                <th>Manager Rating</th>
+                <th>Final Rating</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in employee_data %}
+            <tr>
+                <td>
+                    <!-- Check if RM or BDM and link to their performance page -->
+                    {% if emp.employee.groups.all.0.name == 'Relationship Managers' %}
+                    <a href="{% url 'rm_performance' emp.employee.id %}" class="employee-link">
+                        {{ emp.employee.get_full_name }}
+                    </a>
+                    {% elif emp.employee.bdm_profile %}
+                    <a href="{% url 'bdm_performance' emp.employee.bdm_profile.id %}" class="employee-link">
+                        {{ emp.employee.get_full_name }}
+                    </a>
+                    {% else %}
+                    <strong>{{ emp.employee.get_full_name }}</strong>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="employee-type type-{{ emp.assignment.employee_type|lower }}">
+                        {{ emp.employee_type }}
+                    </span>
+                </td>
+                <td>{{ emp.manager.get_full_name|default:"-" }}</td>
+                <td>
+                    <span class="status-badge status-{{ emp.status }}">
+                        {% if emp.status == 'not_started' %}
+                        Not Started
+                        {% elif emp.status == 'draft' %}
+                        Draft
+                        {% elif emp.status == 'submitted' %}
+                        Submitted
+                        {% elif emp.status == 'manager_reviewed' %}
+                        Manager Reviewed
+                        {% elif emp.status == 'completed' %}
+                        Completed
+                        {% else %}
+                        {{ emp.status }}
+                        {% endif %}
+                    </span>
+                </td>
+                <td class="rating-display">
+                    {% if emp.self_overall_rating %}
+                    {% for i in "12345" %}{% if forloop.counter <= emp.self_overall_rating %}★{% else %}☆{% endif %}{% endfor %} {% else %}-{% endif %} </td>
+                <td class="rating-display">
+                    {% if emp.manager_rating_by_employee %}
+                    {% for i in "12345" %}{% if forloop.counter <= emp.manager_rating_by_employee %}★{% else %}☆{% endif %}{% endfor %} {% else %}-{% endif %} </td>
+                <td class="rating-display">
+                    {% if emp.manager_rating %}
+                    {% for i in "12345" %}{% if forloop.counter <= emp.manager_rating %}★{% else %}☆{% endif %}{% endfor %} {% else %}-{% endif %} </td>
+                <td class="rating-display">
+                    {% if emp.final_rating %}
+                    {% for i in "12345" %}{% if forloop.counter <= emp.final_rating %}★{% else %}☆{% endif %}{% endfor %} {% else %}-{% endif %} </td>
+                <td>
+                    {% if emp.review %}
+                    <div style="display: flex; gap: 5px;">
+                        <a href="{% url 'appraisal_admin_finalize' emp.review.id %}" class="btn-action">
+                            {% if emp.status == 'completed' %}Update Final{% else %}Finalize{% endif %}
+                        </a>
+                        {% if emp.status != 'completed' %}
+                        <a href="{% url 'appraisal_manager_review' emp.review.id %}" class="btn-action" style="background: #17a2b8;">
+                            Edit
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <span class="btn-action btn-disabled">Pending</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" style="text-align: center; padding: 40px; color: #888;">
+                    {% if not selected_period_obj %}
+                    Please select an appraisal period to view employees.
+                    {% else %}
+                    No employees found. Please create Employee Assignments in Admin.
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,509 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+    }
+
+    .filter-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+
+    .action-card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+        border-left: 4px solid #11998e;
+    }
+
+    .year-section {
+        margin-bottom: 30px;
+    }
+
+    .year-header {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 10px 10px 0 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .year-content {
+        border: 1px solid #e0e0e0;
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        padding: 15px;
+    }
+
+    .review-card {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-left: 4px solid #11998e;
+    }
+
+    .review-card.own-review {
+        border-left-color: #667eea;
+    }
+
+    .review-info h4 {
+        margin: 0 0 5px 0;
+        color: #333;
+    }
+
+    .review-info p {
+        margin: 0;
+        color: #666;
+        font-size: 0.9rem;
+    }
+
+    .status-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-draft {
+        background: #e0e0e0;
+        color: #666;
+    }
+
+    .status-submitted {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-manager_reviewed {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .status-completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .btn-primary {
+        padding: 10px 25px;
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .btn-secondary {
+        padding: 10px 25px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .btn-edit {
+        padding: 8px 20px;
+        background: linear-gradient(135deg, #ed8936, #dd6b20);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .btn-view {
+        padding: 8px 20px;
+        background: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .rating-stars {
+        color: #ffc107;
+        font-size: 1.2rem;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        margin: 30px 0 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #11998e;
+    }
+
+    .year-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .year-tab {
+        padding: 8px 20px;
+        border-radius: 20px;
+        text-decoration: none;
+        font-weight: 600;
+        background: #e0e0e0;
+        color: #333;
+        transition: all 0.3s;
+    }
+
+    .year-tab:hover {
+        background: #667eea;
+        color: white;
+    }
+
+    .year-tab.active {
+        background: #667eea;
+        color: white;
+    }
+
+    .btn-toggle {
+        padding: 6px 14px;
+        background: #17a2b8;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .btn-toggle:hover {
+        background: #138496;
+    }
+
+    .answers-dropdown {
+        display: none;
+        margin-top: 15px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #17a2b8;
+    }
+
+    .answers-dropdown.show {
+        display: block;
+    }
+
+    .answer-item {
+        background: white;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .answer-question {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+    .answer-text {
+        color: #555;
+        margin-bottom: 5px;
+    }
+
+    .answer-rating {
+        color: #ffc107;
+    }
+
+    .ratings-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+        margin-bottom: 15px;
+        padding: 15px;
+        background: linear-gradient(135deg, #e8f5e9, #fff);
+        border-radius: 8px;
+    }
+
+    .rating-box {
+        text-align: center;
+        padding: 10px;
+        background: white;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .rating-box-label {
+        font-size: 0.75rem;
+        color: #666;
+    }
+
+    .rating-box-value {
+        font-size: 1.2rem;
+        color: #ffc107;
+    }
+</style>
+
+<div class="page-header">
+    <h2>📊 360° Performance Appraisal</h2>
+    <p>View and manage your performance reviews</p>
+</div>
+
+{% if needs_self_review %}
+<div class="action-card">
+    <h3 style="margin-top: 0;">📝 Action Required</h3>
+    <p>You have a pending self-review for <strong>{{ active_period.name }}</strong>.</p>
+    <a href="{% url 'appraisal_self_review' active_period.id %}" class="btn-primary">
+        Start Self-Review
+    </a>
+</div>
+{% endif %}
+
+{% if can_edit_review %}
+<div class="action-card" style="border-left-color: #ed8936; background: linear-gradient(135deg, #fff8f0, #ffffff);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h3 style="margin: 0 0 8px 0; color: #c05621;">✏️ Edit Your Review</h3>
+            <p style="margin: 0; color: #666;">
+                <strong>{{ active_period.name }}</strong>
+                <span class="status-badge status-{{ can_edit_review.status }}"
+                    style="margin-left: 10px;">{{can_edit_review.get_status_display }}</span>
+            </p>
+        </div>
+        <a href="{% url 'appraisal_self_review' active_period.id %}" class="btn-edit" style="white-space: nowrap;">
+            ✏️ Edit Review
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% if is_admin %}
+<div class="action-card" style="border-left-color: #667eea;">
+    <h3 style="margin-top: 0;">🔧 Admin Actions</h3>
+    <p>Manage all employee appraisals and finalize ratings.</p>
+    <a href="{% url 'appraisal_admin_view' %}" class="btn-secondary">
+        View All Reviews
+    </a>
+</div>
+{% endif %}
+
+<!-- Manager's Team Section -->
+{% if is_manager and subordinates_data %}
+<div class="section-card"
+    style="background: linear-gradient(135deg, #f8f9fa, #fff); border: 1px solid #e0e0e0; border-radius: 10px; padding: 25px; margin-bottom: 30px;">
+    <h3 style="margin: 0 0 20px; color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+        👥 My Team - {{ active_period.name|default:"Active Period" }}
+    </h3>
+    <p style="color: #666; margin-bottom: 20px;">Review your team members' appraisals for the current period.</p>
+
+    <div style="display: grid; gap: 15px;">
+        {% for sub in subordinates_data %}
+        <div
+            style="background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; border-left: 4px solid {% if sub.status == 'submitted' %}#ffc107{% elif sub.status == 'manager_reviewed' %}#17a2b8{% elif sub.status == 'completed' %}#28a745{% elif sub.status == 'not_started' %}#dc3545{% else %}#6c757d{% endif %};">
+            <div>
+                <strong style="color: #333;">{{ sub.employee.get_full_name }}</strong>
+                <span
+                    style="background: #e0e0e0; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin-left: 10px;">{{sub.employee_type}}</span>
+                <p style="margin: 5px 0 0; color: #666; font-size: 0.9rem;">
+                    {% if sub.status == 'not_started' %}
+                    <span style="color: #dc3545;">⏳ Has not started self-review</span>
+                    {% elif sub.status == 'draft' %}
+                    <span style="color: #6c757d;">📝 Draft in progress</span>
+                    {% elif sub.status == 'submitted' %}
+                    <span style="color: #ffc107;">⚠️ Awaiting your review</span>
+                    {% elif sub.status == 'manager_reviewed' %}
+                    <span style="color: #17a2b8;">✓ You have reviewed - Pending admin finalization</span>
+                    {% elif sub.status == 'completed' %}
+                    <span style="color: #28a745;">✅ Completed</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                {% if sub.can_review %}
+                <a href="{% url 'appraisal_manager_review' sub.review.id %}" class="btn-primary"
+                    style="padding: 8px 16px;">
+                    📝 Review Now
+                </a>
+                {% elif sub.can_update %}
+                <a href="{% url 'appraisal_manager_review' sub.review.id %}" class="btn-edit" style="padding: 8px 16px;">
+                    ✏️ Update Review
+                </a>
+                {% elif sub.review and sub.status == 'completed' %}
+                <a href="{% url 'appraisal_manager_review' sub.review.id %}" class="btn-view" style="padding: 8px 16px;">
+                    View
+                </a>
+                {% else %}
+                <span style="color: #888; font-size: 0.85rem;">Waiting...</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Year Filter -->
+<div class="filter-card">
+    <strong>Filter by Year:</strong>
+    <div class="year-tabs" style="margin-top: 10px;">
+        <a href="{% url 'appraisal_list' %}" class="year-tab {% if not selected_year %}active{% endif %}">All Years</a>
+        {% for year in all_years %}
+        <a href="?year={{ year }}" class="year-tab {% if selected_year == year|stringformat:'s' %}active{% endif %}">{{ year }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+<h3 class="section-title">My Reviews</h3>
+
+{% if reviews_by_year %}
+{% for year, year_reviews in reviews_by_year.items %}
+<div class="year-section">
+    <div class="year-header">
+        <span>📅 {{ year }}</span>
+        <span style="font-size: 0.9rem; font-weight: 400;">{{ year_reviews|length }} review(s)</span>
+    </div>
+    <div class="year-content">
+        {% for review in year_reviews %}
+        <div class="review-card {% if review.employee == request.user %}own-review{% endif %}"
+            style="flex-direction: column; align-items: stretch;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="review-info">
+                    <h4>{{ review.period.name }}</h4>
+                    <p>
+                        {% if review.employee == request.user %}
+                        Your Review
+                        {% else %}
+                        {{ review.employee.get_full_name }}
+                        {% endif %}
+                        {% if review.manager %}
+                        | Manager: {{ review.manager.get_full_name }}
+                        {% endif %}
+                    </p>
+                    {% if review.self_overall_rating %}
+                    <p class="rating-stars" style="margin-top: 8px;">
+                        Self: {% for i in "12345" %}{% if forloop.counter <= review.self_overall_rating %}★{% else %}☆{% endif %}{% endfor %} </p>
+                            {% endif %}
+                            {% if review.final_rating %}
+                            <p class="rating-stars">
+                                Final: {% for i in "12345" %}{% if forloop.counter <= review.final_rating %}★{% else %}☆{% endif %}{% endfor %} </p>
+                                    {% endif %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button type="button" class="btn-toggle" onclick="toggleAnswers('answers_{{ review.id }}')">
+                        📋 View Details
+                    </button>
+                    <span class="status-badge status-{{ review.status }}">
+                        {{ review.get_status_display }}
+                    </span>
+
+                    {% if review.employee == request.user %}
+                    {% if review.status == 'draft' or review.status == 'submitted' or review.status == 'manager_reviewed' %}
+                    {% if review.period.is_active %}
+                    <a href="{% url 'appraisal_self_review' review.period.id %}" class="btn-edit">Edit</a>
+                    {% else %}
+                    <a href="{% url 'appraisal_employee_final' review.id %}" class="btn-view">View</a>
+                    {% endif %}
+                    {% elif review.status == 'completed' %}
+                    <a href="{% url 'appraisal_employee_final' review.id %}" class="btn-secondary" style="padding: 8px 20px;">View Final</a>
+                    {% else %}
+                    <a href="{% url 'appraisal_employee_final' review.id %}" class="btn-view">View</a>
+                    {% endif %}
+                    {% elif review.manager == request.user and review.status == 'submitted' %}
+                    <a href="{% url 'appraisal_manager_review' review.id %}" class="btn-secondary" style="padding: 8px 20px;">Review</a>
+                    {% elif review.manager == request.user %}
+                    <a href="{% url 'appraisal_manager_review' review.id %}" class="btn-view">View</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Expandable Answers Dropdown -->
+            <div id="answers_{{ review.id }}" class="answers-dropdown">
+                <!-- Ratings Summary -->
+                <div class="ratings-summary">
+                    <div class="rating-box">
+                        <div class="rating-box-label">Self Rating</div>
+                        <div class="rating-box-value">
+                            {% if review.self_overall_rating %}{% for i in "12345" %}{% if forloop.counter <= review.self_overall_rating %}★{% else %}☆{% endif %}{% endfor %}{% else %}-{% endif %}
+                                </div>
+                        </div>
+                        <div class="rating-box">
+                            <div class="rating-box-label">Manager Rating</div>
+                            <div class="rating-box-value">
+                                {% if request.user != review.employee %}
+                                {% if review.manager_rating %}{% for i in "12345" %}{% if forloop.counter <= review.manager_rating %}★{% else %}☆{% endif %}{% endfor %}{% else %}-{% endif %} {% else %} <span style="font-size: 0.8rem; color: #999;">Confidential</span>
+                                    {% endif %}
+                            </div>
+                        </div>
+                        <div class="rating-box">
+                            <div class="rating-box-label">Final Rating</div>
+                            <div class="rating-box-value">
+                                {% if review.final_rating %}{% for i in "12345" %}{% if forloop.counter <= review.final_rating %}★{% else %}☆{% endif %}{% endfor %}{% else %}-{% endif %}
+                                    </div>
+                            </div>
+                        </div>
+
+                        <!-- Questions and Answers -->
+                        <h5 style="margin: 0 0 15px; color: #333;">📝 Questions & Answers</h5>
+                        {% for answer in review.answers.all %}
+                        <div class="answer-item">
+                            <div class="answer-question">{{ forloop.counter }}. {{ answer.question.question_text }}
+                            </div>
+                            <div class="answer-text">{{ answer.answer_text|default:"No answer provided" }}</div>
+                            {% if answer.rating %}
+                            <div class="answer-rating">Rating: {% for i in "12345" %}{% if forloop.counter <= answer.rating %}★{% else %}☆{% endif %}{% endfor %}</div>
+                                    {% endif %}
+                            </div>
+                            {% empty %}
+                            <p style="color: #888; text-align: center;">No answers recorded yet.</p>
+                            {% endfor %}
+
+                            {% if review.self_comments %}
+                            <div class="answer-item" style="border-left: 3px solid #11998e;">
+                                <div class="answer-question">Additional Comments</div>
+                                <div class="answer-text">{{ review.self_comments }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="review-card">
+                <p style="text-align: center; width: 100%; color: #888; margin: 20px 0;">
+                    No appraisals found. {% if not active_period %}No active appraisal period.{% endif %}
+                </p>
+            </div>
+            {% endif %}
+
+            <script>
+                function toggleAnswers(id) {
+                    const dropdown = document.getElementById(id);
+                    if (dropdown) {
+                        dropdown.classList.toggle('show');
+                    }
+                }
+            </script>
+            {% endblock %}

@@ -63,12 +63,27 @@ urlpatterns = [
     path('leads/upload/', views.bulk_leads_upload, name='bulk_leads_upload'),
     path('leads/transfer/<int:lead_id>/', views.transfer_lead_to_client, name='transfer_lead_to_client'),
 
+# RM Performance Dashboard
+    path('rm-performance/<int:rm_id>/', views.rm_performance, name='rm_performance'),
+    
+    # BDM Performance Dashboard
+    path('bdm-performance/<int:bdm_id>/', views.bdm_performance, name='bdm_performance'),
 
+    # Redemptions
+    path('redemptions/', views.redemptions_list, name='redemptions_list'),
+    path('redemptions/add/<int:client_id>/', views.add_redemption, name='add_redemption'),
+    path('redemptions/update/<int:redemption_id>/', views.update_redemption, name='update_redemption'),
+    path('redemptions/delete/<int:redemption_id>/', views.delete_redemption, name='delete_redemption'),
+
+    # 360-Degree Appraisal System
+    path('appraisal/', views.appraisal_list, name='appraisal_list'),
+    path('appraisal/self/<int:period_id>/', views.appraisal_self_review, name='appraisal_self_review'),
+    path('appraisal/manager/<int:review_id>/', views.appraisal_manager_review, name='appraisal_manager_review'),
+    path('appraisal/admin/', views.appraisal_admin_view, name='appraisal_admin_view'),
+    path('appraisal/admin/finalize/<int:review_id>/', views.appraisal_admin_finalize, name='appraisal_admin_finalize'),
+    path('appraisal/final/<int:review_id>/', views.appraisal_employee_final, name='appraisal_employee_final'),
+    path('backup-db/', views.download_db, name='download_db'),
 ]
-
-
-
-
 
 
 

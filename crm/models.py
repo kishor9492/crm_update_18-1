@@ -69,6 +69,7 @@ class Sale(models.Model):
         ('AIF', 'AIF'),
         ('WILL', 'Will'),
         ('GI', 'General Insurance'),
+        ('SIF', 'Specialised Investment Funds')
     ]
 
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='sales')
@@ -248,3 +249,151 @@ class Lead(models.Model):
         if self.client:
             return f"Lead for {self.client.name}"
         return f"Lead for {self.temp_client_name or 'Unknown Client'}"
+
+
+class Redemption(models.Model):
+    """Track redemptions/withdrawals to calculate net sales"""
+    PRODUCT_CHOICES = Sale.PRODUCT_CHOICES  # Same products as Sale
+    
+    REDEMPTION_TYPE_CHOICES = [
+        ('SIP_STOP', 'SIP Stop'),
+        ('PARTIAL', 'Partial Redemption'),
+        ('FULL', 'Full Redemption'),
+        ('SWITCH_OUT', 'Switch Out'),
+    ]
+    
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='redemptions')
+    product = models.CharField(choices=PRODUCT_CHOICES, max_length=10)
+    redemption_type = models.CharField(max_length=20, choices=REDEMPTION_TYPE_CHOICES)
+    fund_name = models.CharField(max_length=255, blank=True, null=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    redemption_date = models.DateField()
+    relationship_manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='redemptions')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-redemption_date']
+
+    def __str__(self):
+        return f"{self.get_redemption_type_display()} - {self.client.name} - ₹{self.amount}"
+
+
+# 360-Degree Appraisal System Models
+
+class AppraisalPeriod(models.Model):
+    """Defines an appraisal period (e.g., Q1 2026, Annual 2025)"""
+    name = models.CharField(max_length=100)  # e.g., "Q1 2026"
+    year = models.IntegerField(default=2026)  # Year for easy filtering
+    start_date = models.DateField()
+    end_date = models.DateField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-year', '-start_date']
+
+    def __str__(self):
+        return f"{self.name} ({self.year})"
+
+
+class AppraisalQuestion(models.Model):
+    """Questions for appraisal (added by admin)"""
+    QUESTION_TYPE_CHOICES = [
+        ('self', 'Self Assessment'),
+        ('manager', 'Manager Assessment'),
+    ]
+    question_text = models.TextField()
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPE_CHOICES, default='self')
+    is_active = models.BooleanField(default=True)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f"{self.question_text[:50]}..."
+
+
+class EmployeeAssignment(models.Model):
+    """Assigns a manager to each employee for appraisal purposes"""
+    EMPLOYEE_TYPE_CHOICES = [
+        ('RM', 'Relationship Manager'),
+        ('BDM', 'Business Development Manager'),
+        ('MANAGER', 'Manager'),
+        ('HR', 'HR'),
+    ]
+    employee = models.OneToOneField(User, on_delete=models.CASCADE, related_name='employee_assignment')
+    manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='subordinates')
+    employee_type = models.CharField(max_length=10, choices=EMPLOYEE_TYPE_CHOICES, default='RM')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        manager_name = self.manager.get_full_name() if self.manager else "No Manager"
+        return f"{self.employee.get_full_name()} → {manager_name}"
+
+
+class AppraisalReview(models.Model):
+    """Main appraisal review record"""
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted'),
+        ('manager_reviewed', 'Manager Reviewed'),
+        ('completed', 'Completed'),
+    ]
+    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
+    
+    period = models.ForeignKey(AppraisalPeriod, on_delete=models.CASCADE, related_name='reviews')
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='appraisals')
+    manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_appraisals')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    
+    # Self assessment
+    self_overall_rating = models.IntegerField(null=True, blank=True, choices=RATING_CHOICES)
+    self_comments = models.TextField(blank=True)
+    self_submitted_at = models.DateTimeField(null=True, blank=True)
+    
+    # Rating for manager (by employee) - hidden from manager
+    manager_rating_by_employee = models.IntegerField(null=True, blank=True, choices=RATING_CHOICES)
+    manager_comments_by_employee = models.TextField(blank=True)
+    
+    # Manager review of employee
+    manager_rating = models.IntegerField(null=True, blank=True, choices=RATING_CHOICES)
+    manager_comments = models.TextField(blank=True)
+    manager_reviewed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Final rating by admin/superuser
+    final_rating = models.IntegerField(null=True, blank=True, choices=RATING_CHOICES)
+    final_comments = models.TextField(blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['period', 'employee']
+        ordering = ['-period__start_date', 'employee__first_name']
+
+    def __str__(self):
+        return f"{self.employee.get_full_name()} - {self.period.name}"
+
+
+class AppraisalAnswer(models.Model):
+    """Answers to appraisal questions"""
+    RATING_CHOICES = [(i, str(i)) for i in range(1, 6)]
+    
+    review = models.ForeignKey(AppraisalReview, on_delete=models.CASCADE, related_name='answers')
+    question = models.ForeignKey(AppraisalQuestion, on_delete=models.CASCADE)
+    answer_text = models.TextField(blank=True)
+    rating = models.IntegerField(choices=RATING_CHOICES, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['review', 'question']
+
+    def __str__(self):
+        return f"Answer for {self.question.question_text[:30]}..."

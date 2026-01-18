@@ -1,0 +1,151 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .form-header h2 {
+        color: #333;
+        margin: 0;
+    }
+
+    .form-header p {
+        color: #666;
+        margin-top: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 1rem;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+    }
+
+    .client-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #667eea;
+        text-decoration: none;
+    }
+</style>
+
+<div class="form-container">
+    <a href="{% url 'client_list' %}" class="back-link">← Back to Clients</a>
+
+    <div class="form-header">
+        <h2>➖ Add Redemption</h2>
+        <p>Record a redemption for {{ client.name }}</p>
+    </div>
+
+    <div class="client-info">
+        <strong>Client:</strong> {{ client.name }}<br>
+        <strong>Email:</strong> {{ client.email }}<br>
+        <strong>Phone:</strong> {{ client.phone }}
+    </div>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label for="product">Product *</label>
+            <select name="product" id="product" required>
+                <option value="">Select Product</option>
+                {% for code, name in product_choices %}
+                <option value="{{ code }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="redemption_type">Redemption Type *</label>
+            <select name="redemption_type" id="redemption_type" required>
+                <option value="">Select Type</option>
+                {% for code, name in redemption_type_choices %}
+                <option value="{{ code }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="fund_name">Fund Name (Optional)</label>
+            <input type="text" name="fund_name" id="fund_name" placeholder="e.g., HDFC Equity Fund">
+        </div>
+
+        <div class="form-group">
+            <label for="amount">Amount (₹) *</label>
+            <input type="number" name="amount" id="amount" step="0.01" required placeholder="Enter redemption amount">
+        </div>
+
+        <div class="form-group">
+            <label for="redemption_date">Redemption Date *</label>
+            <input type="date" name="redemption_date" id="redemption_date" required>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea name="notes" id="notes" rows="3" placeholder="Any additional notes..."></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit">Add Redemption</button>
+    </form>
+</div>
+{% endblock %}

@@ -23,6 +23,8 @@ from .models import Sale, Meeting, User, Call, Client
 from django.utils.dateparse import parse_datetime
 
 from django.contrib.auth.decorators import login_required, permission_required
+from django.http import FileResponse
+from django.conf import settings
 
 
 from .forms import AddCallForm, CallFilterForm, BulkCallUploadForm
@@ -31,7 +33,11 @@ import io
 from django.utils import timezone
 from .forms import UpdateClientForm
 from .forms import LeadForm  # assume you have a LeadForm for lead creation
-from .models import BusinessDevelopmentManager
+from .models import BusinessDevelopmentManager, Redemption
+from .models import (
+    AppraisalPeriod, AppraisalQuestion, EmployeeAssignment,
+    AppraisalReview, AppraisalAnswer
+)
 
 
 @login_required
@@ -944,13 +950,23 @@ def crm_dashboard(request):
         leads_data = leads_data.filter(created_at__date__lte=end_date)
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        sales_summary = sales_data.values('product').annotate(total_sales=Sum('amount'))
+        # Sales by product (for product breakdown)
+        sales_by_product = sales_data.values('product').annotate(total_sales=Sum('amount'))
+        
+        # Sales by relationship manager (for pie chart)
+        sales_summary = sales_data.values(
+            'relationship_manager__id',
+            'relationship_manager__first_name',
+            'relationship_manager__last_name'
+        ).annotate(total_sales=Sum('amount'))
         meetings_summary = meetings_data.values(
+            'relationship_manager__id',
             'relationship_manager__first_name',
             'relationship_manager__last_name'
         ).annotate(total_meetings=Count('id'))
 
         product_sales_per_manager = sales_data.values(
+            'relationship_manager__id',
             'relationship_manager__first_name',
             'relationship_manager__last_name',
             'product'
@@ -988,6 +1004,7 @@ def crm_dashboard(request):
                 sales_dict = {item['product']: item['total_amount'] for item in sales_by_product}
 
                 bdm_performance.append({
+                    'id': bdm.id,
                     'name': bdm.user.get_full_name(),
                     'open_leads': open_leads_count,
                     'closed_leads': closed_leads_count,
@@ -1017,11 +1034,35 @@ def crm_dashboard(request):
             sales_dict = {item['product']: item['total_amount'] for item in sales_by_product}
 
             bdm_performance.append({
+                'id': bdm_instance.id,
                 'name': user.get_full_name(),
                 'open_leads': open_leads_count,
                 'closed_leads': closed_leads_count,
                 'sales_by_product': sales_dict
             })
+
+        # Get redemptions data for net sales calculation
+        redemptions_data = Redemption.objects.all()
+        if is_rm:
+            redemptions_data = redemptions_data.filter(relationship_manager=user)
+        elif is_admin and rm_id:
+            redemptions_data = redemptions_data.filter(relationship_manager_id=rm_id)
+        
+        if start_date:
+            redemptions_data = redemptions_data.filter(redemption_date__gte=start_date)
+        if end_date:
+            redemptions_data = redemptions_data.filter(redemption_date__lte=end_date)
+        
+        # Redemptions per manager per product
+        product_redemptions_per_manager = redemptions_data.values(
+            'relationship_manager__id',
+            'relationship_manager__first_name',
+            'relationship_manager__last_name',
+            'product'
+        ).annotate(total_redemptions=Sum('amount')).order_by(
+            'relationship_manager__first_name',
+            'relationship_manager__last_name'
+        )
 
         return JsonResponse({
             'sales_data': list(sales_summary),
@@ -1030,6 +1071,7 @@ def crm_dashboard(request):
                 'summary': list(meetings_summary),
             },
             'product_sales_per_manager': list(product_sales_per_manager),
+            'product_redemptions_per_manager': list(product_redemptions_per_manager),
             'bdm_performance': bdm_performance,
         })
 
@@ -1641,3 +1683,770 @@ def custom_logout_view(request):
     logout(request)
     return redirect('/')  # Redirect to the homepage
 
+
+# RM Performance Dashboard View
+@login_required
+def rm_performance(request, rm_id):
+    """View detailed performance analytics for a specific Relationship Manager"""
+    # Only admin/superuser can access this page
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("You do not have permission to access this page.")
+
+    # Get the RM user
+    rm_user = get_object_or_404(User, id=rm_id)
+
+    # Get filter parameters
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    month = request.GET.get('month')
+
+    # Handle month filter - convert to date range
+    if month:
+        try:
+            year, month_num = month.split('-')
+            import calendar
+            first_day = datetime.date(int(year), int(month_num), 1)
+            last_day = datetime.date(int(year), int(month_num), calendar.monthrange(int(year), int(month_num))[1])
+            start_date = first_day.strftime('%Y-%m-%d')
+            end_date = last_day.strftime('%Y-%m-%d')
+        except (ValueError, AttributeError):
+            pass
+
+    # Base querysets for this RM
+    clients = Client.objects.filter(relationship_manager=rm_user)
+    sales = Sale.objects.filter(relationship_manager=rm_user)
+    meetings = Meeting.objects.filter(relationship_manager=rm_user)
+    calls = Call.objects.filter(relationship_manager=rm_user)
+    leads = Lead.objects.filter(client__relationship_manager=rm_user)
+
+    # Apply date filters
+    if start_date:
+        sales = sales.filter(sale_date__gte=start_date)
+        meetings = meetings.filter(date__gte=start_date)
+        calls = calls.filter(call_start_time__date__gte=start_date)
+        leads = leads.filter(created_at__date__gte=start_date)
+    if end_date:
+        sales = sales.filter(sale_date__lte=end_date)
+        meetings = meetings.filter(date__lte=end_date)
+        calls = calls.filter(call_start_time__date__lte=end_date)
+        leads = leads.filter(created_at__date__lte=end_date)
+
+    # Calculate statistics
+    total_clients = clients.count()
+    total_sales_amount = sales.aggregate(total=Sum('amount'))['total'] or 0
+    total_meetings = meetings.count()
+    completed_meetings = meetings.filter(remark='Completed').count()
+    pending_meetings = meetings.filter(remark='Pending').count()
+    total_calls = calls.count()
+    connected_calls = calls.filter(call_status='connected').count()
+    total_leads = leads.count()
+    open_leads = leads.filter(status='open').count()
+    closed_leads = leads.filter(status='closed').count()
+
+    # Product-wise sales breakdown
+    product_sales = sales.values('product').annotate(
+        count=Count('id'),
+        total_amount=Sum('amount')
+    ).order_by('-total_amount')
+
+    # Meeting status breakdown
+    meeting_status = meetings.values('remark').annotate(count=Count('id'))
+
+    # Call status breakdown
+    call_status_breakdown = calls.values('call_status').annotate(count=Count('id'))
+
+    # Call purpose breakdown
+    call_purpose_breakdown = calls.values('call_purpose').annotate(count=Count('id'))
+
+    # Recent activities (last 10 of each)
+    recent_sales = sales.select_related('client').order_by('-sale_date')[:10]
+    recent_meetings = meetings.select_related('client').order_by('-date')[:10]
+    recent_calls = calls.select_related('client').order_by('-call_start_time')[:10]
+
+    # Monthly sales trend (last 6 months)
+    six_months_ago = datetime.date.today() - datetime.timedelta(days=180)
+    monthly_sales = sales.filter(sale_date__gte=six_months_ago).values(
+        'sale_date__year', 'sale_date__month'
+    ).annotate(
+        total_amount=Sum('amount'),
+        count=Count('id')
+    ).order_by('sale_date__year', 'sale_date__month')
+
+    # Generate month options for filter dropdown
+    current_date = datetime.date.today()
+    month_options = []
+    for i in range(12):
+        month_date = current_date - datetime.timedelta(days=30 * i)
+        month_options.append({
+            'value': month_date.strftime('%Y-%m'),
+            'label': month_date.strftime('%B %Y')
+        })
+
+    # Handle AJAX request for chart data
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'rm_name': rm_user.get_full_name(),
+            'total_clients': total_clients,
+            'total_sales_amount': float(total_sales_amount),
+            'total_meetings': total_meetings,
+            'completed_meetings': completed_meetings,
+            'pending_meetings': pending_meetings,
+            'total_calls': total_calls,
+            'connected_calls': connected_calls,
+            'total_leads': total_leads,
+            'open_leads': open_leads,
+            'closed_leads': closed_leads,
+            'product_sales': list(product_sales),
+            'meeting_status': list(meeting_status),
+            'call_status_breakdown': list(call_status_breakdown),
+            'call_purpose_breakdown': list(call_purpose_breakdown),
+            'monthly_sales': list(monthly_sales),
+        })
+
+    context = {
+        'rm_user': rm_user,
+        'total_clients': total_clients,
+        'total_sales_amount': total_sales_amount,
+        'total_meetings': total_meetings,
+        'completed_meetings': completed_meetings,
+        'pending_meetings': pending_meetings,
+        'total_calls': total_calls,
+        'connected_calls': connected_calls,
+        'total_leads': total_leads,
+        'open_leads': open_leads,
+        'closed_leads': closed_leads,
+        'product_sales': product_sales,
+        'meeting_status': meeting_status,
+        'call_status_breakdown': call_status_breakdown,
+        'call_purpose_breakdown': call_purpose_breakdown,
+        'recent_sales': recent_sales,
+        'recent_meetings': recent_meetings,
+        'recent_calls': recent_calls,
+        'monthly_sales': monthly_sales,
+        'start_date': start_date or '',
+        'end_date': end_date or '',
+        'month': month or '',
+        'month_options': month_options,
+        'product_choices': Sale.PRODUCT_CHOICES,
+    }
+
+    return render(request, 'crm/rm_performance.html', context)
+
+
+# BDM Performance Dashboard View
+@login_required
+def bdm_performance(request, bdm_id):
+    """View detailed performance analytics for a specific Business Development Manager"""
+    # Only admin/superuser can access this page
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("You do not have permission to access this page.")
+
+    # Get the BDM
+    bdm = get_object_or_404(BusinessDevelopmentManager, id=bdm_id)
+    bdm_user = bdm.user
+
+    # Get filter parameters
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    month = request.GET.get('month')
+
+    # Handle month filter - convert to date range
+    if month:
+        try:
+            year, month_num = month.split('-')
+            import calendar
+            first_day = datetime.date(int(year), int(month_num), 1)
+            last_day = datetime.date(int(year), int(month_num), calendar.monthrange(int(year), int(month_num))[1])
+            start_date = first_day.strftime('%Y-%m-%d')
+            end_date = last_day.strftime('%Y-%m-%d')
+        except (ValueError, AttributeError):
+            pass
+
+    # Base querysets for this BDM
+    leads = Lead.objects.filter(generated_by=bdm)
+    sales = Sale.objects.filter(bdm=bdm)
+
+    # Apply date filters
+    if start_date:
+        leads = leads.filter(created_at__date__gte=start_date)
+        sales = sales.filter(sale_date__gte=start_date)
+    if end_date:
+        leads = leads.filter(created_at__date__lte=end_date)
+        sales = sales.filter(sale_date__lte=end_date)
+
+    # Calculate statistics
+    total_leads = leads.count()
+    open_leads = leads.filter(status='open').count()
+    closed_leads = leads.filter(status='closed').count()
+    total_sales_amount = sales.aggregate(total=Sum('amount'))['total'] or 0
+    total_sales_count = sales.count()
+
+    # Conversion rate
+    conversion_rate = (closed_leads / total_leads * 100) if total_leads > 0 else 0
+
+    # Product-wise sales breakdown
+    product_sales = sales.values('product').annotate(
+        count=Count('id'),
+        total_amount=Sum('amount')
+    ).order_by('-total_amount')
+
+    # Lead status breakdown
+    lead_status_breakdown = leads.values('status').annotate(count=Count('id'))
+
+    # Recent leads (last 10)
+    recent_leads = leads.select_related('client').order_by('-created_at')[:10]
+    
+    # Recent sales (last 10)
+    recent_sales = sales.select_related('client').order_by('-sale_date')[:10]
+
+    # Monthly leads trend (last 6 months)
+    six_months_ago = datetime.date.today() - datetime.timedelta(days=180)
+    monthly_leads = leads.filter(created_at__date__gte=six_months_ago).values(
+        'created_at__year', 'created_at__month'
+    ).annotate(
+        count=Count('id')
+    ).order_by('created_at__year', 'created_at__month')
+
+    # Generate month options for filter dropdown
+    current_date = datetime.date.today()
+    month_options = []
+    for i in range(12):
+        month_date = current_date - datetime.timedelta(days=30 * i)
+        month_options.append({
+            'value': month_date.strftime('%Y-%m'),
+            'label': month_date.strftime('%B %Y')
+        })
+
+    # Handle AJAX request for chart data
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({
+            'bdm_name': bdm_user.get_full_name(),
+            'total_leads': total_leads,
+            'open_leads': open_leads,
+            'closed_leads': closed_leads,
+            'conversion_rate': round(conversion_rate, 1),
+            'total_sales_amount': float(total_sales_amount),
+            'total_sales_count': total_sales_count,
+            'product_sales': list(product_sales),
+            'lead_status_breakdown': list(lead_status_breakdown),
+            'monthly_leads': list(monthly_leads),
+        })
+
+    context = {
+        'bdm': bdm,
+        'bdm_user': bdm_user,
+        'total_leads': total_leads,
+        'open_leads': open_leads,
+        'closed_leads': closed_leads,
+        'conversion_rate': round(conversion_rate, 1),
+        'total_sales_amount': total_sales_amount,
+        'total_sales_count': total_sales_count,
+        'product_sales': product_sales,
+        'lead_status_breakdown': lead_status_breakdown,
+        'recent_leads': recent_leads,
+        'recent_sales': recent_sales,
+        'monthly_leads': monthly_leads,
+        'start_date': start_date or '',
+        'end_date': end_date or '',
+        'month': month or '',
+        'month_options': month_options,
+        'product_choices': Sale.PRODUCT_CHOICES,
+    }
+
+    return render(request, 'crm/bdm_performance.html', context)
+
+
+# ==================== REDEMPTIONS VIEWS ====================
+
+@login_required
+def redemptions_list(request):
+    """List all redemptions with filters"""
+    user = request.user
+    
+    if user.is_superuser:
+        redemptions = Redemption.objects.select_related('client', 'relationship_manager')
+    elif user.groups.filter(name='Relationship Managers').exists():
+        redemptions = Redemption.objects.filter(relationship_manager=user).select_related('client', 'relationship_manager')
+    else:
+        redemptions = Redemption.objects.none()
+    
+    # Apply filters
+    search = request.GET.get('search', '')
+    product = request.GET.get('product', '')
+    redemption_type = request.GET.get('redemption_type', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    if search:
+        redemptions = redemptions.filter(
+            Q(client__name__icontains=search) | Q(fund_name__icontains=search)
+        )
+    if product:
+        redemptions = redemptions.filter(product=product)
+    if redemption_type:
+        redemptions = redemptions.filter(redemption_type=redemption_type)
+    if start_date:
+        redemptions = redemptions.filter(redemption_date__gte=start_date)
+    if end_date:
+        redemptions = redemptions.filter(redemption_date__lte=end_date)
+    
+    paginator = Paginator(redemptions, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'search': search,
+        'product': product,
+        'redemption_type': redemption_type,
+        'start_date': start_date,
+        'end_date': end_date,
+        'product_choices': Sale.PRODUCT_CHOICES,
+        'redemption_type_choices': Redemption.REDEMPTION_TYPE_CHOICES,
+    }
+    return render(request, 'crm/redemptions_list.html', context)
+
+
+@login_required
+def add_redemption(request, client_id):
+    """Add a new redemption for a client"""
+    client = get_object_or_404(Client, id=client_id)
+    
+    if request.method == 'POST':
+        product = request.POST.get('product')
+        redemption_type = request.POST.get('redemption_type')
+        fund_name = request.POST.get('fund_name', '')
+        amount = request.POST.get('amount')
+        redemption_date = request.POST.get('redemption_date')
+        notes = request.POST.get('notes', '')
+        
+        Redemption.objects.create(
+            client=client,
+            product=product,
+            redemption_type=redemption_type,
+            fund_name=fund_name,
+            amount=amount,
+            redemption_date=redemption_date,
+            relationship_manager=request.user,
+            notes=notes
+        )
+        
+        messages.success(request, 'Redemption added successfully!')
+        return redirect('client_list')
+    
+    context = {
+        'client': client,
+        'product_choices': Sale.PRODUCT_CHOICES,
+        'redemption_type_choices': Redemption.REDEMPTION_TYPE_CHOICES,
+    }
+    return render(request, 'crm/add_redemption.html', context)
+
+
+@login_required
+def update_redemption(request, redemption_id):
+    """Update a redemption"""
+    redemption = get_object_or_404(Redemption, id=redemption_id)
+    
+    if request.method == 'POST':
+        redemption.product = request.POST.get('product')
+        redemption.redemption_type = request.POST.get('redemption_type')
+        redemption.fund_name = request.POST.get('fund_name', '')
+        redemption.amount = request.POST.get('amount')
+        redemption.redemption_date = request.POST.get('redemption_date')
+        redemption.notes = request.POST.get('notes', '')
+        redemption.save()
+        
+        messages.success(request, 'Redemption updated successfully!')
+        return redirect('redemptions_list')
+    
+    context = {
+        'redemption': redemption,
+        'product_choices': Sale.PRODUCT_CHOICES,
+        'redemption_type_choices': Redemption.REDEMPTION_TYPE_CHOICES,
+    }
+    return render(request, 'crm/update_redemption.html', context)
+
+
+@login_required
+def delete_redemption(request, redemption_id):
+    """Delete a redemption"""
+    redemption = get_object_or_404(Redemption, id=redemption_id)
+    
+    if request.method == 'POST':
+        redemption.delete()
+        messages.success(request, 'Redemption deleted successfully!')
+        return redirect('redemptions_list')
+    
+    return render(request, 'crm/confirm_delete.html', {'object': redemption, 'type': 'Redemption'})
+
+
+# ==================== 360-DEGREE APPRAISAL VIEWS ====================
+
+@login_required
+def appraisal_list(request):
+    """List all appraisals for current user"""
+    user = request.user
+    
+    # Get active appraisal period
+    active_period = AppraisalPeriod.objects.filter(is_active=True).first()
+    
+    # Get all years for filter
+    all_years = AppraisalPeriod.objects.values_list('year', flat=True).distinct().order_by('-year')
+    selected_year = request.GET.get('year', '')
+    
+    if user.is_superuser:
+        # Admin sees all reviews
+        reviews = AppraisalReview.objects.select_related('employee', 'manager', 'period').all()
+    else:
+        # Employee sees their own reviews
+        reviews = AppraisalReview.objects.filter(employee=user).select_related('employee', 'manager', 'period')
+        
+        # Manager sees reviews of their subordinates
+        try:
+            subordinate_ids = EmployeeAssignment.objects.filter(manager=user).values_list('employee_id', flat=True)
+            subordinate_reviews = AppraisalReview.objects.filter(
+                employee_id__in=subordinate_ids
+            ).select_related('employee', 'manager', 'period')
+            reviews = reviews | subordinate_reviews
+        except:
+            pass
+    
+    # Filter by year if selected
+    if selected_year:
+        reviews = reviews.filter(period__year=selected_year)
+    
+    # Group reviews by year for display with answers prefetched
+    reviews_by_year = {}
+    reviews_with_answers = reviews.distinct().prefetch_related('answers__question').order_by('-period__year', '-period__start_date')
+    for review in reviews_with_answers:
+        year = review.period.year
+        if year not in reviews_by_year:
+            reviews_by_year[year] = []
+        reviews_by_year[year].append(review)
+    
+    # Check if user needs to create a self-review for active period
+    needs_self_review = False
+    can_edit_review = None  # Review that can be edited
+    if active_period and not user.is_superuser:
+        try:
+            assignment = EmployeeAssignment.objects.get(employee=user)
+            existing_review = AppraisalReview.objects.filter(employee=user, period=active_period).first()
+            if not existing_review:
+                needs_self_review = True
+            elif existing_review.status in ['draft', 'submitted']:
+                # Can edit if status is draft or submitted (not yet manager reviewed)
+                can_edit_review = existing_review
+        except EmployeeAssignment.DoesNotExist:
+            pass
+    
+    # Get subordinates for manager view (with review status)
+    subordinates_data = []
+    is_manager = False
+    if not user.is_superuser:
+        subordinates = EmployeeAssignment.objects.filter(manager=user).select_related('employee')
+        if subordinates.exists():
+            is_manager = True
+            for sub in subordinates:
+                sub_review = None
+                sub_status = 'not_started'
+                can_review = False
+                can_update = False
+                
+                if active_period:
+                    sub_review = AppraisalReview.objects.filter(
+                        employee=sub.employee,
+                        period=active_period
+                    ).first()
+                    
+                    if sub_review:
+                        sub_status = sub_review.status
+                        # Manager can review if employee submitted
+                        if sub_review.status == 'submitted':
+                            can_review = True
+                        # Manager can update if already reviewed but not completed
+                        elif sub_review.status == 'manager_reviewed':
+                            can_update = True
+                
+                subordinates_data.append({
+                    'employee': sub.employee,
+                    'employee_type': sub.get_employee_type_display(),
+                    'review': sub_review,
+                    'status': sub_status,
+                    'can_review': can_review,
+                    'can_update': can_update,
+                })
+    
+    context = {
+        'reviews': reviews.distinct().order_by('-period__start_date'),
+        'reviews_by_year': reviews_by_year,
+        'all_years': all_years,
+        'selected_year': selected_year,
+        'active_period': active_period,
+        'needs_self_review': needs_self_review,
+        'can_edit_review': can_edit_review,
+        'is_admin': user.is_superuser,
+        'is_manager': is_manager,
+        'subordinates_data': subordinates_data,
+    }
+    return render(request, 'crm/appraisal_list.html', context)
+
+
+@login_required
+def appraisal_self_review(request, period_id):
+    """Employee self-review form"""
+    user = request.user
+    period = get_object_or_404(AppraisalPeriod, id=period_id, is_active=True)
+    
+    # Get or create review
+    try:
+        assignment = EmployeeAssignment.objects.get(employee=user)
+    except EmployeeAssignment.DoesNotExist:
+        messages.error(request, 'You are not assigned for appraisal. Please contact HR.')
+        return redirect('appraisal_list')
+    
+    review, created = AppraisalReview.objects.get_or_create(
+        employee=user,
+        period=period,
+        defaults={'manager': assignment.manager}
+    )
+    
+    # Prevent editing only if completed
+    if review.status == 'completed':
+        messages.error(request, "This review is locked because it has been finalized.")
+        return redirect('appraisal_list')
+    
+    # Get questions
+    questions = AppraisalQuestion.objects.filter(question_type='self', is_active=True)
+    
+    if request.method == 'POST':
+        # Save answers
+        for question in questions:
+            answer_text = request.POST.get(f'answer_{question.id}', '')
+            rating = request.POST.get(f'rating_{question.id}', None)
+            
+            AppraisalAnswer.objects.update_or_create(
+                review=review,
+                question=question,
+                defaults={'answer_text': answer_text, 'rating': rating if rating else None}
+            )
+        
+        # Save overall rating and comments
+        review.self_overall_rating = request.POST.get('self_overall_rating', None)
+        review.self_comments = request.POST.get('self_comments', '')
+        
+        # Manager rating by employee
+        review.manager_rating_by_employee = request.POST.get('manager_rating', None)
+        review.manager_comments_by_employee = request.POST.get('manager_comments', '')
+        
+        # Check if submitting or saving draft
+        if 'submit' in request.POST:
+            review.status = 'submitted'
+            review.self_submitted_at = timezone.now()
+            messages.success(request, 'Your self-review has been submitted successfully!')
+        else:
+            messages.success(request, 'Draft saved successfully!')
+        
+        review.save()
+        return redirect('appraisal_list')
+    
+    # Get existing answers as dictionary
+    existing_answers_dict = {a.question_id: a for a in review.answers.all()}
+    
+    # Attach existing answers to questions
+    questions_with_answers = []
+    for question in questions:
+        answer = existing_answers_dict.get(question.id)
+        questions_with_answers.append({
+            'question': question,
+            'answer_text': answer.answer_text if answer else '',
+            'rating': answer.rating if answer else None,
+        })
+    
+    context = {
+        'review': review,
+        'period': period,
+        'questions_with_answers': questions_with_answers,
+        'manager': assignment.manager,
+    }
+    return render(request, 'crm/appraisal_self_review.html', context)
+
+
+@login_required
+def appraisal_manager_review(request, review_id):
+    """Manager review form - can see employee self-review"""
+    user = request.user
+    review = get_object_or_404(AppraisalReview, id=review_id)
+    
+    # Check if user is the manager for this review
+    if not user.is_superuser and review.manager != user:
+        return HttpResponseForbidden("You are not authorized to view this review.")
+    
+    # Get employee's self answers
+    employee_answers = review.answers.select_related('question').all()
+    
+    if request.method == 'POST' and review.status in ['submitted', 'manager_reviewed']:
+        review.manager_rating = request.POST.get('manager_rating', None)
+        review.manager_comments = request.POST.get('manager_comments', '')
+        
+        # Only update status if it was submitted
+        if review.status == 'submitted':
+            review.status = 'manager_reviewed'
+            review.manager_reviewed_at = timezone.now()
+            
+        review.save()
+        
+        messages.success(request, 'Your review has been saved successfully!')
+        return redirect('appraisal_list')
+    
+    context = {
+        'review': review,
+        'employee_answers': employee_answers,
+        # Note: We don't pass manager_rating_by_employee - manager shouldn't see this
+    }
+    return render(request, 'crm/appraisal_manager_review.html', context)
+
+
+@login_required
+def appraisal_admin_view(request):
+    """Admin view - see all reviews with all ratings including employee's manager rating"""
+    # Check if user is superuser or in "HR All Access" group
+    is_hr_admin = request.user.groups.filter(name='HR All Access').exists()
+    
+    if not (request.user.is_superuser or is_hr_admin):
+        return HttpResponseForbidden("Only admin or authorized HR can access this page.")
+    
+    # Get unique years for filter
+    years = AppraisalPeriod.objects.values_list('year', flat=True).distinct().order_by('-year')
+    
+    # Filter options
+    year_filter = request.GET.get('year', '')
+    period_id = request.GET.get('period', '')
+    status_filter = request.GET.get('status', '')
+    
+    # Get periods filtered by year
+    periods = AppraisalPeriod.objects.all()
+    if year_filter:
+        periods = periods.filter(year=year_filter)
+    
+    # Get selected period or active period
+    selected_period_obj = None
+    if period_id:
+        selected_period_obj = AppraisalPeriod.objects.filter(id=period_id).first()
+    elif year_filter:
+        # If year is selected, pick the first period of that year
+        selected_period_obj = periods.first()
+    else:
+        selected_period_obj = AppraisalPeriod.objects.filter(is_active=True).first()
+    
+    # Get all employees with assignments
+    all_assignments = EmployeeAssignment.objects.select_related('employee', 'manager').all()
+    
+    # Build employee data with review status
+    employee_data = []
+    for assignment in all_assignments:
+        review = None
+        review_status = 'not_started'
+        
+        if selected_period_obj:
+            review = AppraisalReview.objects.filter(
+                employee=assignment.employee,
+                period=selected_period_obj
+            ).select_related('period').first()
+            
+            if review:
+                review_status = review.status
+        
+        # Apply status filter
+        if status_filter:
+            if status_filter == 'not_started' and review_status != 'not_started':
+                continue
+            elif status_filter != 'not_started' and review_status != status_filter:
+                continue
+        
+        employee_data.append({
+            'assignment': assignment,
+            'employee': assignment.employee,
+            'manager': assignment.manager,
+            'employee_type': assignment.get_employee_type_display(),
+            'review': review,
+            'status': review_status,
+            'self_overall_rating': review.self_overall_rating if review else None,
+            'manager_rating_by_employee': review.manager_rating_by_employee if review else None,
+            'manager_rating': review.manager_rating if review else None,
+            'final_rating': review.final_rating if review else None,
+        })
+    
+    # Extended status choices including 'not_started'
+    status_choices = [('not_started', 'Not Started')] + list(AppraisalReview.STATUS_CHOICES)
+    
+    context = {
+        'employee_data': employee_data,
+        'years': years,
+        'periods': periods,
+        'selected_year': year_filter,
+        'selected_period': period_id,
+        'selected_period_obj': selected_period_obj,
+        'selected_status': status_filter,
+        'status_choices': status_choices,
+    }
+    return render(request, 'crm/appraisal_admin_view.html', context)
+
+
+@login_required
+def appraisal_admin_finalize(request, review_id):
+    """Admin finalizes a review with final rating"""
+    # Check if user is superuser or in "HR All Access" group
+    is_hr_admin = request.user.groups.filter(name='HR All Access').exists()
+    
+    if not (request.user.is_superuser or is_hr_admin):
+        return HttpResponseForbidden("Only admin can finalize reviews.")
+    
+    review = get_object_or_404(AppraisalReview, id=review_id)
+    
+    if request.method == 'POST':
+        review.final_rating = request.POST.get('final_rating', None)
+        review.final_comments = request.POST.get('final_comments', '')
+        review.status = 'completed'
+        review.completed_at = timezone.now()
+        review.save()
+        
+        messages.success(request, 'Final review saved successfully!')
+        return redirect('appraisal_admin_view')
+    
+    # Get all answers
+    employee_answers = review.answers.select_related('question').all()
+    
+    context = {
+        'review': review,
+        'employee_answers': employee_answers,
+    }
+    return render(request, 'crm/appraisal_admin_finalize.html', context)
+
+
+@login_required
+def appraisal_employee_final(request, review_id):
+    """Employee views their final rating (only visible after admin completes)"""
+    review = get_object_or_404(AppraisalReview, id=review_id)
+    
+    # Only the employee can see their final review
+    if review.employee != request.user:
+        return HttpResponseForbidden("You can only view your own appraisal.")
+    
+    if review.status != 'completed':
+        messages.info(request, 'Your appraisal is still being reviewed.')
+        return redirect('appraisal_list')
+    
+    context = {
+        'review': review,
+    }
+    return render(request, 'crm/appraisal_employee_final.html', context)
+
+
+@login_required
+def download_db(request):
+    """Download the sqlite database file (Admin only)"""
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Only admin can download the database.")
+    
+    db_path = settings.DATABASES['default']['NAME']
+    return FileResponse(open(db_path, 'rb'), as_attachment=True, filename='db.sqlite3')

@@ -1,0 +1,152 @@
+{% extends 'crm/base.html' %}
+
+{% block content %}
+<style>
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        padding: 40px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .result-card {
+        background: white;
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .final-rating {
+        font-size: 4rem;
+        color: #ffc107;
+        margin: 30px 0;
+    }
+
+    .rating-label {
+        font-size: 1.5rem;
+        color: #333;
+        margin-bottom: 30px;
+    }
+
+    .final-comments {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 8px;
+        text-align: left;
+        margin-top: 30px;
+    }
+
+    .final-comments h4 {
+        color: #333;
+        margin-bottom: 15px;
+    }
+
+    .final-comments p {
+        color: #555;
+        line-height: 1.6;
+    }
+
+    .period-info {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px 20px;
+        border-radius: 20px;
+        display: inline-block;
+        margin-top: 15px;
+    }
+
+    .rating-breakdown {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-top: 30px;
+        padding-top: 30px;
+        border-top: 1px solid #eee;
+    }
+
+    .rating-item {
+        text-align: center;
+    }
+
+    .rating-item .value {
+        font-size: 1.5rem;
+        color: #ffc107;
+    }
+
+    .rating-item .label {
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 5px;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-top: 30px;
+        padding: 12px 30px;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+    }
+</style>
+
+<div class="container">
+    <div class="page-header">
+        <h2>🎉 Your Appraisal Result</h2>
+        <div class="period-info">{{ review.period.name }}</div>
+    </div>
+
+    <div class="result-card">
+        <h3 style="color: #666; margin-bottom: 10px;">Final Rating</h3>
+
+        <div class="final-rating">
+            {% for i in "12345" %}
+            {% if forloop.counter <= review.final_rating %}★{% else %}☆{% endif %} {% endfor %} </div>
+
+                <div class="rating-label">
+                    {{ review.final_rating }} out of 5
+                </div>
+
+                {% if review.final_comments %}
+                <div class="final-comments">
+                    <h4>💬 Feedback from Management</h4>
+                    <p>{{ review.final_comments }}</p>
+                </div>
+                {% endif %}
+
+                <div class="rating-breakdown">
+                    <div class="rating-item">
+                        <div class="value">
+                            {% if review.self_overall_rating %}{{ review.self_overall_rating }}{% else %}-{% endif %}
+                        </div>
+                        <div class="label">Your Self Rating</div>
+                    </div>
+                    <div class="rating-item">
+                        <div class="value">
+                            <span style="font-size: 1rem; color: #999;">Confidential</span>
+                        </div>
+                        <div class="label">Manager's Rating</div>
+                    </div>
+                    <div class="rating-item">
+                        <div class="value" style="color: #28a745;">
+                            {{ review.final_rating }}
+                        </div>
+                        <div class="label">Final Rating</div>
+                    </div>
+                </div>
+
+                <p style="margin-top: 30px; color: #888; font-size: 0.9rem;">
+                    Completed on: {{ review.completed_at|date:"F d, Y" }}
+                </p>
+
+                <a href="{% url 'appraisal_list' %}" class="back-link">← Back to Appraisals</a>
+        </div>
+    </div>
+    {% endblock %}
